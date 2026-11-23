@@ -2,23 +2,26 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { loginSchema, type LoginInput, type ApiError } from "@tasksight/shared";
+import { loginSchema, type LoginInput } from "@tasksight/shared";
+import { useAuth } from "@/lib/auth-context";
+import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { login } = useAuth();
   const [apiError, setApiError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    reset,
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
@@ -26,26 +29,16 @@ export default function LoginPage() {
 
   async function onSubmit(data: LoginInput) {
     setApiError(null);
-    setSuccess(null);
-
-    // Task 1.10: no network calls. Simulate a short request so the loading
-    // state and error rendering can be exercised. error@example.com triggers
-    // a mocked 401 in the shape returned by the API.
-    await new Promise((resolve) => setTimeout(resolve, 400));
-
-    if (data.email === "error@example.com") {
-      const mock: ApiError = {
-        error: {
-          code: "UNAUTHORIZED",
-          message: "Invalid email or password",
-        },
-      };
-      setApiError(mock.error.message);
-      return;
+    try {
+      await login(data.email, data.password);
+      router.push("/"); // Redirect to home on success
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setApiError(err.message);
+      } else {
+        setApiError("An unexpected error occurred");
+      }
     }
-
-    setSuccess(`Signed in as ${data.email} (mock â€” real API in task 1.11)`);
-    reset();
   }
 
   return (
@@ -62,15 +55,6 @@ export default function LoginPage() {
               className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
               {apiError}
-            </div>
-          )}
-
-          {success && (
-            <div
-              role="status"
-              className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm text-primary"
-            >
-              {success}
             </div>
           )}
 

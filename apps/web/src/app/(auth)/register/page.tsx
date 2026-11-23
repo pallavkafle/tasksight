@@ -2,23 +2,26 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { registerSchema, type RegisterInput, type ApiError } from "@tasksight/shared";
+import { registerSchema, type RegisterInput } from "@tasksight/shared";
+import { useAuth } from "@/lib/auth-context";
+import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const { register: authRegister } = useAuth();
   const [apiError, setApiError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    reset,
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     defaultValues: { name: "", email: "", password: "" },
@@ -26,24 +29,16 @@ export default function RegisterPage() {
 
   async function onSubmit(data: RegisterInput) {
     setApiError(null);
-    setSuccess(null);
-
-    // Task 1.10: no network calls. Mock the API for loading + error shape.
-    await new Promise((resolve) => setTimeout(resolve, 400));
-
-    if (data.email === "taken@example.com") {
-      const mock: ApiError = {
-        error: {
-          code: "CONFLICT",
-          message: "An account with this email already exists",
-        },
-      };
-      setApiError(mock.error.message);
-      return;
+    try {
+      await authRegister(data.name, data.email, data.password);
+      router.push("/"); // Redirect to home on success
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setApiError(err.message);
+      } else {
+        setApiError("An unexpected error occurred");
+      }
     }
-
-    setSuccess(`Account would be created for ${data.email} (mock â€” real API in task 1.11)`);
-    reset();
   }
 
   return (
@@ -60,15 +55,6 @@ export default function RegisterPage() {
               className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
               {apiError}
-            </div>
-          )}
-
-          {success && (
-            <div
-              role="status"
-              className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm text-primary"
-            >
-              {success}
             </div>
           )}
 
