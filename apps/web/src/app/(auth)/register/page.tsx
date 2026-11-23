@@ -11,13 +11,7 @@ import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -111,11 +105,7 @@ export default function RegisterPage() {
               {...register("password")}
             />
             {errors.password && (
-              <p
-                id="password-error"
-                role="alert"
-                className="text-sm text-destructive"
-              >
+              <p id="password-error" role="alert" className="text-sm text-destructive">
                 {errors.password.message}
               </p>
             )}
@@ -128,10 +118,7 @@ export default function RegisterPage() {
 
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link
-              href="/login"
-              className="text-primary underline-offset-4 hover:underline"
-            >
+            <Link href="/login" className="text-primary underline-offset-4 hover:underline">
               Sign in
             </Link>
           </p>

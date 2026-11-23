@@ -25,15 +25,15 @@ export class ApiError extends Error {
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.status === 204) return {} as T;
-  
+
   const data = await res.json().catch(() => ({}));
-  
+
   if (!res.ok) {
     const err = data.error || {};
     throw new ApiError(
       err.code || "INTERNAL",
       err.message || "An unexpected error occurred",
-      err.details
+      err.details,
     );
   }
   return data as T;
@@ -41,7 +41,7 @@ async function handleResponse<T>(res: Response): Promise<T> {
 
 export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
-  
+
   if (inMemoryToken) {
     headers.set("Authorization", `Bearer ${inMemoryToken}`);
   }
@@ -63,7 +63,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     !endpoint.startsWith("/auth/refresh")
   ) {
     const newToken = await handleRefresh();
-    
+
     if (newToken) {
       // Replay the original request with the new token
       headers.set("Authorization", `Bearer ${newToken}`);
