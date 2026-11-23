@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, AuthResponse, MeResponse } from "@tasksight/shared";
-import { fetchApi, setAccessToken, ApiError } from "./api";
+import { fetchApi, setAccessToken } from "./api";
 
 interface AuthContextType {
   user: User | null;
