@@ -3,13 +3,14 @@
   "private": true,
   "packageManager": "pnpm@12.18.0",
   "engines": {
-    "node": ">=20"
+    "node": "\u003e=20"
   },
   "scripts": {
     "lint": "eslint .",
-    "typecheck": "tsc -p packages/shared/tsconfig.json && tsc -p apps/api/tsconfig.json && tsc -p apps/web/tsconfig.json",
+    "typecheck": "tsc -p packages/shared/tsconfig.json \u0026\u0026 tsc -p apps/api/tsconfig.json \u0026\u0026 tsc -p apps/web/tsconfig.json",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test": "pnpm -r --if-present test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
