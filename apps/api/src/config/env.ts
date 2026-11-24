@@ -1,9 +1,12 @@
 import { z } from "zod";
 
-try {
-  process.loadEnvFile();
-} catch {
-  // no .env file: fine
+// Tests set NODE_ENV=test and pass env vars in-process, so skip .env loading there.
+if (process.env.NODE_ENV !== "test") {
+  try {
+    process.loadEnvFile();
+  } catch {
+    // no .env file: fine
+  }
 }
 
 const envSchema = z.object({
