@@ -1,21 +1,32 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { LogOut, Home, CheckSquare, Calendar, Inbox, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-export default function ProtectedLayout({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
+const NAV_ITEMS = [
+  { name: "Today", href: "/", icon: Home },
+  { name: "Inbox", href: "/inbox", icon: Inbox, badge: 3 },
+  { name: "Projects", href: "/projects", icon: CheckSquare },
+  { name: "Calendar", href: "/calendar", icon: Calendar },
+  { name: "Ask Sathi", href: "/chat", icon: Sparkles },
+];
+
+export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    // If we are done loading and there is no user, kick them to login
     if (!isLoading && !user) {
       router.push("/login");
     }
   }, [user, isLoading, router]);
 
-  // Show a loading screen while we check the session
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -24,9 +35,98 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  // If not logged in, don't render anything (they are being redirected)
   if (!user) return null;
 
-  // If we get here, they are logged in!
-  return <>{children}</>;
+  return (
+    <div className="flex h-screen w-full overflow-hidden bg-background">
+      {/* Desktop Sidebar */}
+      <aside className="hidden w-64 flex-col border-r bg-card md:flex">
+        <div className="flex h-14 items-center border-b px-4">
+          <span className="font-semibold text-lg text-primary">TaskSight</span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto py-4">
+          <nav className="space-y-1 px-2">
+            {NAV_ITEMS.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <item.icon className="h-4 w-4" />
+                    {item.name}
+                  </div>
+                  {item.badge && (
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[10px] text-primary">
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="border-t p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <p className="font-medium">{user.name}</p>
+              <p className="text-xs text-muted-foreground truncate w-32">{user.email}</p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={logout}>
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Mobile Header */}
+        <header className="flex h-14 items-center justify-between border-b px-4 md:hidden bg-card">
+          <span className="font-semibold text-lg text-primary">TaskSight</span>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button variant="ghost" size="icon" onClick={logout}>
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        </header>
+
+        {/* Desktop Header for Theme Toggle */}
+        <header className="hidden h-14 items-center justify-end border-b px-6 md:flex bg-card">
+          <ThemeToggle />
+        </header>
+
+        {/* Page Content */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">{children}</div>
+
+        {/* Mobile Bottom Nav */}
+        <nav className="flex h-16 items-center justify-around border-t bg-card md:hidden pb-safe">
+          {NAV_ITEMS.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
+                  isActive ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                <item.icon className="h-5 w-5" />
+                <span className="text-[10px] font-medium">{item.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </main>
+    </div>
+  );
 }
