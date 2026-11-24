@@ -10,11 +10,11 @@ import { AppError } from "./errors/AppError";
 import { errorHandler, notFoundHandler } from "./errors/handler";
 import { healthRouter } from "./routes/health";
 import { authRouter } from "./routes/auth";
+import { workspaceRouter } from "./routes/workspaces";
 
 export function createApp() {
   const app = express();
 
-  // TRUST_PROXY_HOPS from env. 1 in dev (Render), 2 behind Vercel+Render.
   app.set("trust proxy", env.TRUST_PROXY_HOPS);
 
   app.use(pinoHttp({ logger }));
@@ -27,16 +27,13 @@ export function createApp() {
     }),
   );
 
-  // Uptime monitors hit /health and must not be throttled.
   app.use(healthRouter);
 
-  // No caching of any API response.
   app.use((_req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
     next();
   });
 
-  // Rate limiter BEFORE express.json so throttled requests cost no parsing.
   app.use(
     rateLimit({
       windowMs: env.RATE_LIMIT_WINDOW_MS,
@@ -51,7 +48,6 @@ export function createApp() {
   app.use(express.json({ limit: "100kb" }));
   app.use(cookieParser());
 
-  // Stricter limiter for auth endpoints.
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 20,
@@ -63,6 +59,7 @@ export function createApp() {
   app.use("/auth", authLimiter);
 
   app.use(authRouter);
+  app.use(workspaceRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
