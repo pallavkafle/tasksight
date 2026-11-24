@@ -5,3 +5,4 @@ packages:
 allowBuilds:
   esbuild: true
   "@node-rs/argon2": true
+  mongodb-memory-server: true
