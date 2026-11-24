@@ -7,7 +7,8 @@
 - Time budget: ~10 to 12 hours a week.
 
 ## Current state
-- **Done on `main`:** monorepo tooling, shared contract, CI, Express 5 skeleton, Next.js scaffold, 1.6 Atlas/Gemini setup, 1.7 User model + db connect, 1.8 auth API, 1.9 auth tests, 1.10 auth UI, 1.11 web API client. Phase 1 closed except 1.12 (folded into 2.7).
+- **Done on `main`:** monorepo tooling, shared contract, CI, Express 5 skeleton, Next.js scaffold, Phase 1 complete (1.6–1.11), 2.1 Workspaces + RBAC (`cf85b11`). 1.12 folded into 2.7.
+- **Now:** 2.2 Task API (`feat/api-tasks`). Contract in `architecture.md` section 5 extended with 5 task endpoints.
 - **Atlas Setup (Task 1.6):** M0 cluster created. DB user configured. `MONGODB_URI` saved in `apps/api/.env` and tested. Mongoose installed.
 - **Next:** Lane A starts 1.7 (User model) and 1.8 (Auth API). Lane B is blocked until then to start 1.11 (Web API client).
 
@@ -32,6 +33,8 @@
 | Models, IDs and limits from env and the AI Studio console | Providers change them without notice |
 | Squash merge for every PR | One commit per task on `main` |
 | Extend section 5 contract incrementally as endpoints ship | Doc drift between code and contract is worse than a slightly-growing frozen section; each change is reviewed in its PR |
+| Aggregate pipeline for task list, `.find()` for task CRUD | `sanitizeFilter: true` breaks `$gte/$lte/$ifNull/$or`; aggregate bypasses it. Filter/sort/pagination all in one query beats 5 client-side passes |
+| Cursor-based pagination with base64url JSON | Offset pagination duplicates/skips on write; cursor stable regardless of concurrent inserts. `{v, i}` tuple survives sort changes |
 
 ## Lessons
 
