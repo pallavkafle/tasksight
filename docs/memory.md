@@ -32,6 +32,8 @@
 | Models, IDs and limits from env and the AI Studio console | Providers change them without notice |
 | Squash merge for every PR | One commit per task on `main` |
 | Extend section 5 contract incrementally as endpoints ship | Doc drift between code and contract is worse than a slightly-growing frozen section; each change is reviewed in its PR |
+| Aggregate pipeline for task list, `.find()` for task CRUD | `sanitizeFilter: true` breaks `$gte/$lte/$ifNull/$or`; aggregate bypasses it. Filter/sort/pagination all in one query beats 5 client-side passes |
+| Cursor-based pagination with base64url JSON | Offset pagination duplicates/skips on write; cursor stable regardless of concurrent inserts. `{v, i}` tuple survives sort changes |
 
 ## Lessons
 

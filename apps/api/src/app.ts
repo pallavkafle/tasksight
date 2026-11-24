@@ -11,6 +11,7 @@ import { errorHandler, notFoundHandler } from "./errors/handler";
 import { healthRouter } from "./routes/health";
 import { authRouter } from "./routes/auth";
 import { workspaceRouter } from "./routes/workspaces";
+import { taskRouter } from "./routes/tasks";
 
 export function createApp() {
   const app = express();
@@ -60,6 +61,7 @@ export function createApp() {
 
   app.use(authRouter);
   app.use(workspaceRouter);
+  app.use(taskRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
