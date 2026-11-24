@@ -92,11 +92,21 @@ Paths are the API's own. The browser uses the same paths behind `/api`.
 | `POST /auth/refresh` | cookie only | 200 `{accessToken, user}`, cookie rotated | 401 invalid, or reused outside the grace window |
 | `POST /auth/logout` | cookie | 204, cookie cleared | n/a |
 | `GET /auth/me` | `Authorization: Bearer` | 200 `{user}` | 401 |
+| `GET /workspaces` | `Authorization: Bearer` | 200 `{workspaces:[{id,name,ownerId}]}` | 401 |
+| `POST /workspaces` | `{name}` + Bearer | 201 `{workspace:{id,name,ownerId}}` | 400, 401 |
+| `GET /workspaces/:workspaceId` | Bearer, any role | 200 `{workspace, members:[{userId,role,name,email}]}` | 401, 403, 404 |
+| `POST /workspaces/:workspaceId/members` | `{email, role}` + Bearer, owner | 204 | 400, 401, 403, 404, 409 |
+| `PATCH /workspaces/:workspaceId/members/:userId` | `{role}` + Bearer, owner | 204 | 400, 401, 403, 404 |
+| `DELETE /workspaces/:workspaceId/members/:userId` | Bearer, owner | 204 | 401, 403, 404 |
+| `DELETE /workspaces/:workspaceId/leave` | Bearer, any role | 204 | 401, 403, 404 |
 
 - **Error shape:** `{ error: { code, message, details? } }`, with `details` as `Array<{ path: string, message: string }>` or omitted.
 - **Codes:** `VALIDATION_ERROR` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, `CONFLICT` 409, `RATE_LIMITED` 429, `INTERNAL` 500.
 - **User shape:** `{ id, name, email }`. A Mongoose `toJSON` transform maps `_id` to `id` and drops `passwordHash` and `refreshTokens`.
-- Later endpoints: workspaces and members, tasks (filters, sorting, cursor pagination), `POST /ai/parse-task`, `/ai/subtasks`, `/ai/ask` (streaming), `/ai/agent/propose`, `/ai/agent/approve`, and an AI usage summary.
+- **Workspace shape:** `{ id, name, ownerId }`. `ownerId` is the User id string. `toJSON` maps `_id` → `id`.
+- **Workspace member shape:** `{ userId, role, name, email }`. `role` ∈ `owner | member | viewer`. `name` and `email` are joined from User.
+- **Roles:** `owner > member > viewer`. `requireRole(min)` allows `role >= min`. The last owner cannot demote themselves or leave (returns `FORBIDDEN`).
+- Later endpoints: tasks (filters, sorting, cursor pagination), `POST /ai/parse-task`, `/ai/subtasks`, `/ai/ask` (streaming), `/ai/agent/propose`, `/ai/agent/approve`, and an AI usage summary.
 
 ## 6. Request pipeline (Express 5)
 Order: pino-http, helmet, cors, `/health`, rate limiter, `express.json({ limit: "100kb" })`, routes, 404 handler, error handler. The limiter sits before body parsing so throttled requests stay cheap. `/auth/*` and `/ai/*` get stricter limiters. The default in-memory limiter store resets when Render spins down, which is acceptable for one instance.
