@@ -49,15 +49,30 @@ export function createApp() {
   app.use(express.json({ limit: "100kb" }));
   app.use(cookieParser());
 
-  const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    limit: 20,
-    standardHeaders: "draft-7",
-    legacyHeaders: false,
-    handler: (_req, _res, next) =>
-      next(new AppError("RATE_LIMITED", "Too many auth attempts, try again later")),
-  });
-  app.use("/auth", authLimiter);
+  if (env.RATE_LIMIT_ENABLED === "true") {
+    // Lenient: covers /auth/me + /auth/refresh (normal traffic)
+    const authLimiter = rateLimit({
+      windowMs: env.AUTH_RATE_LIMIT_WINDOW_MS,
+      limit: env.AUTH_RATE_LIMIT_MAX,
+      standardHeaders: "draft-7",
+      legacyHeaders: false,
+      handler: (_req, _res, next) =>
+        next(new AppError("RATE_LIMITED", "Too many auth requests, try again later")),
+    });
+    app.use("/auth", authLimiter);
+
+    // Strict: only login + register (brute-force targets)
+    const bruteLimiter = rateLimit({
+      windowMs: env.AUTH_BRUTE_LIMIT_WINDOW_MS,
+      limit: env.AUTH_BRUTE_LIMIT_MAX,
+      standardHeaders: "draft-7",
+      legacyHeaders: false,
+      handler: (_req, _res, next) =>
+        next(new AppError("RATE_LIMITED", "Too many auth attempts, try again later")),
+    });
+    app.use("/auth/login", bruteLimiter);
+    app.use("/auth/register", bruteLimiter);
+  }
 
   app.use(authRouter);
   app.use(workspaceRouter);

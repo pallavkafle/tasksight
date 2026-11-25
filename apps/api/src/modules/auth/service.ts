@@ -7,6 +7,8 @@ import type {
 import { env } from "../../config/env";
 import { AppError } from "../../errors/AppError";
 import { User, type UserDoc } from "../../models/User";
+import { Workspace } from "../../models/Workspace";
+import { WorkspaceMember } from "../../models/WorkspaceMember";
 import { hashPassword, verifyPassword } from "./argon";
 import { generateRefreshToken, hashRefreshToken, signAccessToken } from "./tokens";
 
@@ -53,6 +55,10 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
     }
     throw err;
   }
+
+  // Every new user gets a personal workspace so their UI has somewhere to land.
+  const workspace = await Workspace.create({ name: "My Workspace", ownerId: doc.id });
+  await WorkspaceMember.create({ workspaceId: workspace._id, userId: doc.id, role: "owner" });
 
   const accessToken = await signAccessToken(doc.id);
   return {

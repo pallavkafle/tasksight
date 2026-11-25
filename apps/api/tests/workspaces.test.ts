@@ -49,8 +49,9 @@ describe("workspaces: create & list", () => {
 
     const listA = await request(app).get("/workspaces").set("Authorization", `Bearer ${a.token}`);
     expect(listA.status).toBe(200);
-    expect(listA.body.workspaces).toHaveLength(1);
-    expect(listA.body.workspaces[0].name).toBe("A-space");
+    const namesA = listA.body.workspaces.map((w: { name: string }) => w.name);
+    expect(namesA).toContain("A-space");
+    expect(namesA).not.toContain("B-space");
   });
 });
 

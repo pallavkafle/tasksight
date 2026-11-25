@@ -13,6 +13,11 @@ export default defineConfig({
       JWT_ACCESS_SECRET: "test-access-secret",
       JWT_REFRESH_SECRET: "test-refresh-secret",
       MONGODB_URI: "mongodb://placeholder-for-env-check",
+      RATE_LIMIT_ENABLED: "true",
+      AUTH_RATE_LIMIT_MAX: "100",
+      AUTH_RATE_LIMIT_WINDOW_MS: "900000",
+      AUTH_BRUTE_LIMIT_MAX: "20",
+      AUTH_BRUTE_LIMIT_WINDOW_MS: "900000",
     },
   },
 });
