@@ -42,7 +42,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         <div className="flex h-14 items-center border-b px-4">
           <span className="font-semibold text-lg text-primary">TaskSight</span>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="space-y-1 px-2">
             {NAV_ITEMS.map((item) => {
@@ -96,9 +96,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           <ThemeToggle />
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
-          {children}
-        </div>
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">{children}</div>
 
         <nav className="flex h-16 items-center justify-around border-t bg-card md:hidden pb-safe">
           {NAV_ITEMS.map((item) => {

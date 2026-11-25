@@ -22,8 +22,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function fetchWorkspace() {
     const res = await fetchApi<{ workspaces: { id: string }[] }>("/workspaces");
-    if (res.workspaces && res.workspaces.length > 0) {
-      setWorkspaceId(res.workspaces[0].id);
+    const firstWorkspace = res.workspaces?.[0];
+    if (firstWorkspace) {
+      setWorkspaceId(firstWorkspace.id);
     }
   }
 

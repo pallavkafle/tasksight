@@ -4,7 +4,14 @@ import { useAuth } from "@/lib/auth-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchApi } from "@/lib/api";
 import { Task, TaskStatus } from "@tasksight/shared";
-import { DndContext, DragEndEvent, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragEndEvent,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { KanbanColumn } from "@/components/kanban-column";
 
 const COLUMNS: { id: TaskStatus; title: string }[] = [
@@ -19,7 +26,7 @@ export default function KanbanPage() {
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
 
   const { data, isLoading, error } = useQuery({
@@ -37,7 +44,7 @@ export default function KanbanPage() {
     onMutate: async ({ taskId, status }) => {
       await queryClient.cancelQueries({ queryKey: ["tasks", workspaceId] });
       const previousData = queryClient.getQueryData<{ items: Task[] }>(["tasks", workspaceId]);
-      
+
       if (previousData) {
         queryClient.setQueryData<{ items: Task[] }>(["tasks", workspaceId], {
           ...previousData,
@@ -80,7 +87,7 @@ export default function KanbanPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Project Board</h1>
       </div>
-      
+
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="flex flex-1 gap-6 overflow-x-auto pb-4 items-start h-full">
           {COLUMNS.map((col) => (

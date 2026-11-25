@@ -9,7 +9,7 @@
   /* TaskSight brand tokens */
   --bg: #07100d;
   --surface: rgba(255, 255, 255, 0.04);
-  --border: rgba(255, 255, 255, 0.10);
+  --border: rgba(255, 255, 255, 0.1);
   --text: #e8f0ec;
   --muted-text: #94a3a0;
   --brand: #10b981;
@@ -27,11 +27,11 @@
   --primary-foreground: #07100d;
   --secondary: rgba(255, 255, 255, 0.06);
   --secondary-foreground: var(--text);
-  
+
   /* Fix W-12: Muted is a background, Muted-Foreground is text */
   --muted: rgba(255, 255, 255, 0.06);
   --muted-foreground: var(--muted-text);
-  
+
   --accent: rgba(16, 185, 129, 0.15);
   --accent-foreground: var(--text);
   --destructive: var(--danger);
@@ -63,7 +63,7 @@
   --secondary-foreground: var(--text);
   --muted: #f0f2f1;
   --muted-foreground: var(--muted-text);
-  --accent: rgba(5, 150, 105, 0.10);
+  --accent: rgba(5, 150, 105, 0.1);
   --accent-foreground: var(--text);
   --destructive: var(--danger);
   --destructive-foreground: #ffffff;
