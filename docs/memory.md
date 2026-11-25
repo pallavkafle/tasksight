@@ -56,3 +56,9 @@
 - **Gemini:** create the API key (env only). Check model IDs and limits in AI Studio before Phase 3.
 - **Accounts:** connect Render and Vercel to GitHub before the first deploy.
 - **Verify later:** SSE through the Vercel rewrite; `req.ip` and `TRUST_PROXY_HOPS` behind Vercel and Render; whether Gemma handles structured JSON as well as Flash Lite.
+
+## 2026-11-25 updates
+
+- Phase 2 closing: 2.1, 2.2, 2.3, 2.4 done. 2.5, 2.6, 2.7 remain.
+- fix(api): env-driven auth rate limits + auto-workspace on register (360e803).
+- feat(web): kanban board finished by Lane A after Lane B rate-limited. Explicit user authorization; rule 1 exception noted here. Fixed from Lane B WIP: QueryClientProvider never mounted, /workspaces response shape (obj not array), /tasks items vs tasks, drop-on-card handler. Browser-tested end-to-end.
