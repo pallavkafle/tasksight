@@ -20,17 +20,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  async function fetchWorkspace() {
+    const res = await fetchApi<{ workspaces: { id: string }[] }>("/workspaces");
+    const firstWorkspace = res.workspaces?.[0];
+    if (firstWorkspace) {
+      setWorkspaceId(firstWorkspace.id);
+    }
+  }
+
   useEffect(() => {
     async function checkSession() {
       try {
         const data = await fetchApi<MeResponse>("/auth/me");
         setUser(data.user);
-
-        // Fetch the user's workspaces and select the first one
-        const { workspaces } = await fetchApi<{ workspaces: { id: string }[] }>("/workspaces");
-        if (workspaces.length > 0) {
-          setWorkspaceId(workspaces[0]?.id ?? null);
-        }
+        await fetchWorkspace();
       } catch {
         setUser(null);
       } finally {
@@ -47,12 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setAccessToken(data.accessToken);
     setUser(data.user);
-
-    // Fetch workspaces on login
-    const { workspaces } = await fetchApi<{ workspaces: { id: string }[] }>("/workspaces");
-    if (workspaces.length > 0) {
-      setWorkspaceId(workspaces[0]?.id ?? null);
-    }
+    await fetchWorkspace();
   };
 
   const register = async (name: string, email: string, password: string) => {
@@ -62,12 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setAccessToken(data.accessToken);
     setUser(data.user);
-
-    // New users might not have a workspace, but we fetch just in case
-    const { workspaces } = await fetchApi<{ workspaces: { id: string }[] }>("/workspaces");
-    if (workspaces.length > 0) {
-      setWorkspaceId(workspaces[0]?.id ?? null);
-    }
+    await fetchWorkspace();
   };
 
   const logout = async () => {
