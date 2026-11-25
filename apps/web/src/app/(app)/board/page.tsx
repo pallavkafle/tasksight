@@ -3,7 +3,7 @@
 import { useAuth } from "@/lib/auth-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchApi } from "@/lib/api";
-import { Task, TaskStatus } from "@tasksight/shared";
+import { Task, TaskStatus, Workspace } from "@tasksight/shared";
 import {
   DndContext,
   DragEndEvent,
@@ -13,6 +13,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { KanbanColumn } from "@/components/kanban-column";
+import { CreateTaskDialog } from "@/components/create-task-dialog";
 
 const COLUMNS: { id: TaskStatus; title: string }[] = [
   { id: "todo", title: "To Do" },
@@ -21,7 +22,7 @@ const COLUMNS: { id: TaskStatus; title: string }[] = [
 ];
 
 export default function KanbanPage() {
-  const { workspaceId } = useAuth();
+  const { workspaceId, user } = useAuth();
   const queryClient = useQueryClient();
 
   const sensors = useSensors(
@@ -29,9 +30,22 @@ export default function KanbanPage() {
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
 
+  // Fetch workspace to find the current user's role
+  const { data: workspaceData } = useQuery({
+    queryKey: ["workspace", workspaceId],
+    queryFn: () =>
+      fetchApi<{ workspace: Workspace; members: { userId: string; role: string }[] }>(
+        `/workspaces/${workspaceId}`,
+      ),
+    enabled: !!workspaceId,
+  });
+
+  const currentUserRole = workspaceData?.members.find((m) => m.userId === user?.id)?.role;
+  const isViewer = currentUserRole === "viewer";
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["tasks", workspaceId],
-    queryFn: () => fetchApi<{ items: Task[] }>(`/workspaces/${workspaceId}/tasks`),
+    queryFn: () => fetchApi<{ items: Task[] }>(`/workspaces/${workspaceId}/tasks?limit=100`),
     enabled: !!workspaceId,
   });
 
@@ -64,6 +78,8 @@ export default function KanbanPage() {
   });
 
   function handleDragEnd(event: DragEndEvent) {
+    if (isViewer) return; // Block drag for viewers
+
     const { active, over } = event;
     if (!over) return;
 
@@ -85,7 +101,15 @@ export default function KanbanPage() {
   return (
     <div className="flex h-full flex-col">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Project Board</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Project Board</h1>
+          {isViewer && (
+            <p className="text-sm text-amber-500 mt-1">
+              You have view-only access to this workspace.
+            </p>
+          )}
+        </div>
+        {!isViewer && <CreateTaskDialog />}
       </div>
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
@@ -96,6 +120,7 @@ export default function KanbanPage() {
               id={col.id}
               title={col.title}
               tasks={tasks.filter((t) => t.status === col.id)}
+              disabled={isViewer}
             />
           ))}
         </div>

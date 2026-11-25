@@ -11,7 +11,12 @@ interface KanbanColumnProps {
   tasks: Task[];
 }
 
-export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
+export function KanbanColumn({
+  id,
+  title,
+  tasks,
+  disabled,
+}: KanbanColumnProps & { disabled?: boolean }) {
   const { setNodeRef, isOver } = useDroppable({
     id: id,
     data: { type: "Column", id },
@@ -36,7 +41,7 @@ export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
       >
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
+            <TaskCard key={task.id} task={task} disabled={disabled} />
           ))}
         </SortableContext>
 
