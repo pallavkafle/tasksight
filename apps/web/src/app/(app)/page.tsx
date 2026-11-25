@@ -4,8 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchApi } from "@/lib/api";
 import { Task, TaskStatus } from "@tasksight/shared";
-type TaskListResponse = { items: Task[]; nextCursor: string | null };
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { KanbanColumn } from "@/components/kanban-column";
 
 const COLUMNS: { id: TaskStatus; title: string }[] = [
@@ -19,16 +18,13 @@ export default function KanbanPage() {
   const queryClient = useQueryClient();
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5, // Requires moving 5px before a drag starts (so clicks still work)
-      },
-    }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
   );
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["tasks", workspaceId],
-    queryFn: () => fetchApi<TaskListResponse>(`/workspaces/${workspaceId}/tasks`),
+    queryFn: () => fetchApi<{ items: Task[] }>(`/workspaces/${workspaceId}/tasks`),
     enabled: !!workspaceId,
   });
 
@@ -39,26 +35,23 @@ export default function KanbanPage() {
         body: JSON.stringify({ status }),
       }),
     onMutate: async ({ taskId, status }) => {
-      // Optimistic Update: Move the card instantly in the UI before the server responds
       await queryClient.cancelQueries({ queryKey: ["tasks", workspaceId] });
-      const previousTasks = queryClient.getQueryData<TaskListResponse>(["tasks", workspaceId]);
-
-      if (previousTasks) {
-        queryClient.setQueryData<TaskListResponse>(["tasks", workspaceId], {
-          ...previousTasks,
-          items: previousTasks.items.map((t) => (t.id === taskId ? { ...t, status } : t)),
+      const previousData = queryClient.getQueryData<{ items: Task[] }>(["tasks", workspaceId]);
+      
+      if (previousData) {
+        queryClient.setQueryData<{ items: Task[] }>(["tasks", workspaceId], {
+          ...previousData,
+          items: previousData.items.map((t) => (t.id === taskId ? { ...t, status } : t)),
         });
       }
-      return { previousTasks };
+      return { previousData };
     },
     onError: (_err, _newTodo, context) => {
-      // If the API fails, rollback to the previous state
-      if (context?.previousTasks) {
-        queryClient.setQueryData(["tasks", workspaceId], context.previousTasks);
+      if (context?.previousData) {
+        queryClient.setQueryData(["tasks", workspaceId], context.previousData);
       }
     },
     onSettled: () => {
-      // Refetch to ensure we are in sync with the server
       queryClient.invalidateQueries({ queryKey: ["tasks", workspaceId] });
     },
   });
@@ -68,15 +61,7 @@ export default function KanbanPage() {
     if (!over) return;
 
     const taskId = active.id as string;
-    const overData = over.data.current as { type?: string; task?: Task } | undefined;
-
-    let newStatus: TaskStatus | null = null;
-    if (overData?.type === "Column") {
-      newStatus = over.id as TaskStatus;
-    } else if (overData?.type === "Task") {
-      newStatus = overData.task?.status ?? null;
-    }
-    if (!newStatus) return;
+    const newStatus = over.id as TaskStatus;
 
     const task = data?.items.find((t) => t.id === taskId);
     if (task && task.status !== newStatus) {
@@ -95,7 +80,7 @@ export default function KanbanPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Project Board</h1>
       </div>
-
+      
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="flex flex-1 gap-6 overflow-x-auto pb-4 items-start h-full">
           {COLUMNS.map((col) => (

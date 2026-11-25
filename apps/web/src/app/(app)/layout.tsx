@@ -5,15 +5,13 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LogOut, Home, CheckSquare, Calendar, Inbox, Sparkles } from "lucide-react";
+import { LogOut, LayoutDashboard, Sparkles, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS = [
-  { name: "Today", href: "/", icon: Home },
-  { name: "Inbox", href: "/inbox", icon: Inbox, badge: 3 },
-  { name: "Projects", href: "/projects", icon: CheckSquare },
-  { name: "Calendar", href: "/calendar", icon: Calendar },
+  { name: "Board", href: "/", icon: LayoutDashboard },
   { name: "Ask Sathi", href: "/chat", icon: Sparkles },
+  { name: "Members", href: "/members", icon: Users },
 ];
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -44,7 +42,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         <div className="flex h-14 items-center border-b px-4">
           <span className="font-semibold text-lg text-primary">TaskSight</span>
         </div>
-
+        
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="space-y-1 px-2">
             {NAV_ITEMS.map((item) => {
@@ -63,11 +61,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                     <item.icon className="h-4 w-4" />
                     {item.name}
                   </div>
-                  {item.badge && (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[10px] text-primary">
-                      {item.badge}
-                    </span>
-                  )}
                 </Link>
               );
             })}
@@ -89,7 +82,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Mobile Header */}
         <header className="flex h-14 items-center justify-between border-b px-4 md:hidden bg-card">
           <span className="font-semibold text-lg text-primary">TaskSight</span>
           <div className="flex items-center gap-2">
@@ -100,15 +92,14 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        {/* Desktop Header for Theme Toggle */}
         <header className="hidden h-14 items-center justify-end border-b px-6 md:flex bg-card">
           <ThemeToggle />
         </header>
 
-        {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">{children}</div>
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          {children}
+        </div>
 
-        {/* Mobile Bottom Nav */}
         <nav className="flex h-16 items-center justify-around border-t bg-card md:hidden pb-safe">
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href;
