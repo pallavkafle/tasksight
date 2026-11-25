@@ -5,11 +5,12 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LogOut, LayoutDashboard, Sparkles, Users } from "lucide-react";
+import { LogOut, Home, KanbanSquare, Sparkles, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS = [
-  { name: "Board", href: "/", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/", icon: Home },
+  { name: "Board", href: "/board", icon: KanbanSquare },
   { name: "Ask Sathi", href: "/chat", icon: Sparkles },
   { name: "Members", href: "/members", icon: Users },
 ];
