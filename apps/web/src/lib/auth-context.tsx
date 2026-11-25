@@ -6,6 +6,7 @@ import { fetchApi, setAccessToken } from "./api";
 
 interface AuthContextType {
   user: User | null;
+  workspaceId: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
@@ -16,17 +17,21 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // On app load, check if the user has a valid refresh cookie
   useEffect(() => {
     async function checkSession() {
       try {
-        // fetchApi will automatically handle the 401 -> refresh -> retry flow
         const data = await fetchApi<MeResponse>("/auth/me");
         setUser(data.user);
+
+        // Fetch the user's workspaces and select the first one
+        const { workspaces } = await fetchApi<{ workspaces: { id: string }[] }>("/workspaces");
+        if (workspaces.length > 0) {
+          setWorkspaceId(workspaces[0]?.id ?? null);
+        }
       } catch {
-        // If refresh fails, user is not logged in. That's fine.
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -42,6 +47,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setAccessToken(data.accessToken);
     setUser(data.user);
+
+    // Fetch workspaces on login
+    const { workspaces } = await fetchApi<{ workspaces: { id: string }[] }>("/workspaces");
+    if (workspaces.length > 0) {
+      setWorkspaceId(workspaces[0]?.id ?? null);
+    }
   };
 
   const register = async (name: string, email: string, password: string) => {
@@ -51,22 +62,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setAccessToken(data.accessToken);
     setUser(data.user);
+
+    // New users might not have a workspace, but we fetch just in case
+    const { workspaces } = await fetchApi<{ workspaces: { id: string }[] }>("/workspaces");
+    if (workspaces.length > 0) {
+      setWorkspaceId(workspaces[0]?.id ?? null);
+    }
   };
 
   const logout = async () => {
     try {
       await fetchApi("/auth/logout", { method: "POST" });
     } catch {
-      // ignore network errors on logout
+      // ignore
     } finally {
       setAccessToken(null);
       setUser(null);
-      // Note: We will add React Query cache clearing here later
+      setWorkspaceId(null);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, workspaceId, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
