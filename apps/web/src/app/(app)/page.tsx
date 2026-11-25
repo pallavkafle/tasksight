@@ -1,105 +1,88 @@
 "use client";
 
 import { useAuth } from "@/lib/auth-context";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { fetchApi } from "@/lib/api";
-import { Task, TaskStatus } from "@tasksight/shared";
-import {
-  DndContext,
-  DragEndEvent,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import { KanbanColumn } from "@/components/kanban-column";
+import { Task } from "@tasksight/shared";
+import { DashboardStats } from "@/components/dashboard-stats";
+import { DashboardChart } from "@/components/dashboard-chart";
 
-const COLUMNS: { id: TaskStatus; title: string }[] = [
-  { id: "todo", title: "To Do" },
-  { id: "in_progress", title: "In Progress" },
-  { id: "done", title: "Done" },
-];
+export default function DashboardPage() {
+  const { user, workspaceId } = useAuth();
 
-export default function KanbanPage() {
-  const { workspaceId } = useAuth();
-  const queryClient = useQueryClient();
-
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
-  );
-
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["tasks", workspaceId],
-    queryFn: () => fetchApi<{ items: Task[] }>(`/workspaces/${workspaceId}/tasks`),
+    queryFn: () => fetchApi<{ items: Task[] }>(`/workspaces/${workspaceId}/tasks?limit=100`),
     enabled: !!workspaceId,
   });
 
-  const mutation = useMutation({
-    mutationFn: ({ taskId, status }: { taskId: string; status: TaskStatus }) =>
-      fetchApi(`/workspaces/${workspaceId}/tasks/${taskId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      }),
-    onMutate: async ({ taskId, status }) => {
-      await queryClient.cancelQueries({ queryKey: ["tasks", workspaceId] });
-      const previousData = queryClient.getQueryData<{ items: Task[] }>(["tasks", workspaceId]);
-
-      if (previousData) {
-        queryClient.setQueryData<{ items: Task[] }>(["tasks", workspaceId], {
-          ...previousData,
-          items: previousData.items.map((t) => (t.id === taskId ? { ...t, status } : t)),
-        });
-      }
-      return { previousData };
-    },
-    onError: (_err, _newTodo, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(["tasks", workspaceId], context.previousData);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", workspaceId] });
-    },
-  });
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over) return;
-
-    const taskId = active.id as string;
-    const newStatus = over.id as TaskStatus;
-
-    const task = data?.items.find((t) => t.id === taskId);
-    if (task && task.status !== newStatus) {
-      mutation.mutate({ taskId, status: newStatus });
-    }
+  if (!workspaceId || isLoading) {
+    return <div className="p-8 text-muted-foreground">Loading dashboard...</div>;
   }
 
-  if (!workspaceId) return <div className="p-8 text-muted-foreground">Loading workspace...</div>;
-  if (isLoading) return <div className="p-8 text-muted-foreground">Loading tasks...</div>;
-  if (error) return <div className="p-8 text-red-500">Error loading tasks</div>;
-
   const tasks = data?.items || [];
+  const total = tasks.length;
+  const inProgress = tasks.filter((t) => t.status === "in_progress").length;
+  const completed = tasks.filter((t) => t.status === "done").length;
+
+  // Generate chart data for the last 7 days based on completedAt
+  const chartData = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const dateStr = d.toISOString().split("T")[0] ?? "";
+
+    // Count tasks completed on this day
+    const count = tasks.filter((t) => {
+      // If completedAt exists and matches the date string
+      const completedAt = (t as Task & { completedAt?: string }).completedAt;
+      return completedAt && completedAt.startsWith(dateStr);
+    }).length;
+
+    return {
+      date: d.toLocaleDateString("en-US", { weekday: "short" }),
+      completed: count,
+    };
+  });
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Project Board</h1>
+    <div className="flex flex-col gap-8 max-w-5xl mx-auto w-full">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Good{" "}
+          {new Date().getHours() < 12
+            ? "morning"
+            : new Date().getHours() < 18
+              ? "afternoon"
+              : "evening"}
+          , {user?.name.split(" ")[0]}
+        </h1>
+        <p className="text-muted-foreground mt-1">Here is a summary of your workspace.</p>
       </div>
 
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="flex flex-1 gap-6 overflow-x-auto pb-4 items-start h-full">
-          {COLUMNS.map((col) => (
-            <KanbanColumn
-              key={col.id}
-              id={col.id}
-              title={col.title}
-              tasks={tasks.filter((t) => t.status === col.id)}
-            />
-          ))}
+      <DashboardStats total={total} inProgress={inProgress} completed={completed} />
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <DashboardChart data={chartData} />
+
+        {/* Placeholder for Recent Activity or Tasks */}
+        <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
+          <h3 className="font-semibold leading-none tracking-tight mb-4">Focus for today</h3>
+          <div className="space-y-4">
+            {tasks
+              .filter((t) => t.status !== "done")
+              .slice(0, 4)
+              .map((task) => (
+                <div key={task.id} className="flex items-center gap-3 text-sm">
+                  <div className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span className="truncate">{task.title}</span>
+                </div>
+              ))}
+            {tasks.filter((t) => t.status !== "done").length === 0 && (
+              <p className="text-sm text-muted-foreground">All caught up! No pending tasks.</p>
+            )}
+          </div>
         </div>
-      </DndContext>
+      </div>
     </div>
   );
 }
