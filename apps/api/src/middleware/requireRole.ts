@@ -1,5 +1,5 @@
 import type { RequestHandler } from "express";
-import { isValidObjectId } from "mongoose";
+import { isObjectIdOrHexString } from "mongoose";
 import type { WorkspaceRole } from "@tasksight/shared";
 import { AppError } from "../errors/AppError";
 import { WorkspaceMember } from "../models/WorkspaceMember";
@@ -13,7 +13,7 @@ export function requireRole(min: WorkspaceRole): RequestHandler {
       const workspaceId = param(req, "workspaceId");
       const userId = req.user?.id;
       if (!userId) throw new AppError("UNAUTHORIZED", "Missing user");
-      if (!isValidObjectId(workspaceId)) {
+      if (!isObjectIdOrHexString(workspaceId)) {
         throw new AppError("NOT_FOUND", "Workspace not found");
       }
       const member = await WorkspaceMember.findOne({ workspaceId, userId });

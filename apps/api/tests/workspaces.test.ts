@@ -45,13 +45,16 @@ describe("workspaces: create & list", () => {
     const a = await makeUser("A");
     const b = await makeUser("B");
     await makeWorkspace(a.token, "A-space");
-    await makeWorkspace(b.token, "B-space");
+    const wsB = await makeWorkspace(b.token, "B-space");
 
     const listA = await request(app).get("/workspaces").set("Authorization", `Bearer ${a.token}`);
     expect(listA.status).toBe(200);
-    const namesA = listA.body.workspaces.map((w: { name: string }) => w.name);
-    expect(namesA).toContain("A-space");
-    expect(namesA).not.toContain("B-space");
+    const namesA = listA.body.workspaces.map((w: { name: string }) => w.name).sort();
+    expect(namesA).toEqual(["A-space", "My Workspace"]);
+    const idsA = listA.body.workspaces.map((w: { id: string }) => w.id);
+    expect(new Set(idsA).size).toBe(idsA.length);
+    expect(listA.body.workspaces.every((w: { ownerId: string }) => w.ownerId === a.id)).toBe(true);
+    expect(idsA).not.toContain(wsB);
   });
 });
 
@@ -203,5 +206,25 @@ describe("workspaces: cross-workspace isolation", () => {
       .send({ email: member.email, role: "member" });
     expect(dup.status).toBe(409);
     expect(dup.body.error.code).toBe("CONFLICT");
+  });
+});
+describe("workspaces: invalid id params", () => {
+  it("PATCH /members/abc returns 404", async () => {
+    const owner = await makeUser("Owner");
+    const wsId = await makeWorkspace(owner.token);
+    const res = await request(app)
+      .patch(`/workspaces/${wsId}/members/abc`)
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({ role: "member" });
+    expect(res.status).toBe(404);
+  });
+
+  it("DELETE /members/abc returns 404", async () => {
+    const owner = await makeUser("Owner");
+    const wsId = await makeWorkspace(owner.token);
+    const res = await request(app)
+      .delete(`/workspaces/${wsId}/members/abc`)
+      .set("Authorization", `Bearer ${owner.token}`);
+    expect(res.status).toBe(404);
   });
 });

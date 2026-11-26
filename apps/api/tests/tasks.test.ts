@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import type { Express } from "express";
+import mongoose from "mongoose";
 import { createApp } from "../src/app";
 
 let app: Express;
@@ -317,5 +318,67 @@ describe("RBAC — viewer cannot write", () => {
       .get(`/workspaces/${wsId}/tasks/${taskId}`)
       .set("Authorization", `Bearer ${viewer.token}`);
     expect(read.status).toBe(200);
+  });
+});
+describe("assignee: must be a workspace member", () => {
+  it("create with non-member assignee returns 400 with details", async () => {
+    const { token, wsId } = await ownerAndWs();
+    const outsider = await makeUser();
+    const res = await createTask(token, wsId, { title: "x", assigneeId: outsider.id });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+    expect(res.body.error.details).toEqual(
+      expect.arrayContaining([{ path: "assigneeId", message: expect.any(String) }]),
+    );
+  });
+
+  it("create with unknown-but-well-formed id returns the same 400", async () => {
+    const { token, wsId } = await ownerAndWs();
+    const fakeId = new mongoose.Types.ObjectId().toString();
+    const res = await createTask(token, wsId, { title: "x", assigneeId: fakeId });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("create with a member assignee returns 201", async () => {
+    const { token, wsId } = await ownerAndWs();
+    const member = await makeUser();
+    await addMember(token, wsId, member.email, "member");
+    const res = await createTask(token, wsId, { title: "x", assigneeId: member.id });
+    expect(res.status).toBe(201);
+    expect(res.body.task.assigneeId).toBe(member.id);
+  });
+
+  it("patch with non-member assignee returns 400", async () => {
+    const { token, wsId } = await ownerAndWs();
+    const outsider = await makeUser();
+    const create = await createTask(token, wsId, { title: "x" });
+    const taskId = create.body.task.id;
+    const res = await request(app)
+      .patch(`/workspaces/${wsId}/tasks/${taskId}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ assigneeId: outsider.id });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("removing a member unassigns their tasks and bumps version", async () => {
+    const { token, wsId } = await ownerAndWs();
+    const member = await makeUser();
+    await addMember(token, wsId, member.email, "member");
+    const create = await createTask(token, wsId, { title: "x", assigneeId: member.id });
+    const taskId = create.body.task.id;
+    const versionBefore = create.body.task.version;
+
+    await request(app)
+      .delete(`/workspaces/${wsId}/members/${member.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(204);
+
+    const read = await request(app)
+      .get(`/workspaces/${wsId}/tasks/${taskId}`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(read.body.task.assigneeId).toBeNull();
+    expect(read.body.task.version).toBe(versionBefore + 1);
   });
 });
