@@ -14,6 +14,7 @@ export function TaskCard({ task, disabled }: TaskCardProps & { disabled?: boolea
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { type: "Task", task },
+    disabled: !!disabled,
   });
 
   const style = {

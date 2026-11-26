@@ -1,39 +1,75 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { User, AuthResponse, MeResponse } from "@tasksight/shared";
-import { fetchApi, setAccessToken } from "./api";
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { User, AuthResponse, MeResponse, Workspace, workspaceListSchema } from "@tasksight/shared";
+import { ApiError, fetchApi, setAccessToken } from "./api";
+
+const WORKSPACE_KEY = "tasksight.workspaceId";
+
+function readStoredWorkspaceId(): string | null {
+  try {
+    return window.localStorage.getItem(WORKSPACE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeWorkspaceId(id: string | null): void {
+  try {
+    if (id) window.localStorage.setItem(WORKSPACE_KEY, id);
+    else window.localStorage.removeItem(WORKSPACE_KEY);
+  } catch {
+    // Storage can be blocked. The choice is then simply not remembered.
+  }
+}
 
 interface AuthContextType {
   user: User | null;
+  workspaces: Workspace[];
   workspaceId: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  selectWorkspace: (id: string) => void;
+  refreshWorkspaces: (preferId?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  async function fetchWorkspace() {
-    const res = await fetchApi<{ workspaces: { id: string }[] }>("/workspaces");
-    const firstWorkspace = res.workspaces?.[0];
-    if (firstWorkspace) {
-      setWorkspaceId(firstWorkspace.id);
+  const refreshWorkspaces = useCallback(async (preferId?: string) => {
+    const raw = await fetchApi<unknown>("/workspaces");
+    const parsed = workspaceListSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new ApiError("INTERNAL", "Unexpected response from the server");
     }
-  }
+    const list = parsed.data.workspaces;
+    setWorkspaces(list);
+    const wanted = preferId ?? readStoredWorkspaceId();
+    const chosen = list.find((w) => w.id === wanted) ?? list[0] ?? null;
+    setWorkspaceId(chosen ? chosen.id : null);
+    storeWorkspaceId(chosen ? chosen.id : null);
+  }, []);
+
+  const selectWorkspace = useCallback((id: string) => {
+    setWorkspaceId(id);
+    storeWorkspaceId(id);
+  }, []);
 
   useEffect(() => {
     async function checkSession() {
       try {
         const data = await fetchApi<MeResponse>("/auth/me");
         setUser(data.user);
-        await fetchWorkspace();
+        await refreshWorkspaces();
       } catch {
         setUser(null);
       } finally {
@@ -41,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     checkSession();
-  }, []);
+  }, [refreshWorkspaces]);
 
   const login = async (email: string, password: string) => {
     const data = await fetchApi<AuthResponse>("/auth/login", {
@@ -50,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setAccessToken(data.accessToken);
     setUser(data.user);
-    await fetchWorkspace();
+    await refreshWorkspaces();
   };
 
   const register = async (name: string, email: string, password: string) => {
@@ -60,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setAccessToken(data.accessToken);
     setUser(data.user);
-    await fetchWorkspace();
+    await refreshWorkspaces();
   };
 
   const logout = async () => {
@@ -71,12 +107,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setAccessToken(null);
       setUser(null);
+      setWorkspaces([]);
       setWorkspaceId(null);
+      storeWorkspaceId(null);
+      queryClient.clear();
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, workspaceId, isLoading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        workspaces,
+        workspaceId,
+        isLoading,
+        login,
+        register,
+        logout,
+        selectWorkspace,
+        refreshWorkspaces,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

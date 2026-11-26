@@ -5,13 +5,13 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LogOut, Home, KanbanSquare, Sparkles, Users } from "lucide-react";
+import { WorkspaceSwitcher } from "@/components/workspace-switcher";
+import { LogOut, Home, KanbanSquare, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Board", href: "/board", icon: KanbanSquare },
-  { name: "Ask Sathi", href: "/chat", icon: Sparkles },
   { name: "Members", href: "/members", icon: Users },
 ];
 
@@ -42,6 +42,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       <aside className="hidden w-64 flex-col border-r bg-card md:flex">
         <div className="flex h-14 items-center border-b px-4">
           <span className="font-semibold text-lg text-primary">TaskSight</span>
+        </div>
+
+        <div className="border-b p-3">
+          <WorkspaceSwitcher />
         </div>
 
         <div className="flex-1 overflow-y-auto py-4">
@@ -85,6 +89,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       <main className="flex-1 flex flex-col h-full overflow-hidden">
         <header className="flex h-14 items-center justify-between border-b px-4 md:hidden bg-card">
           <span className="font-semibold text-lg text-primary">TaskSight</span>
+          <WorkspaceSwitcher className="mx-2 min-w-0 flex-1" />
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Button variant="ghost" size="icon" onClick={logout}>
