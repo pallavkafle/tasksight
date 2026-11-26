@@ -169,7 +169,7 @@ describe("workspaces: cross-workspace isolation", () => {
     const a = await makeUser("A");
     const b = await makeUser("B");
     const wsA = await makeWorkspace(a.token, "A-space");
-    const wsB = await makeWorkspace(b.token, "B-space");
+    await makeWorkspace(b.token, "B-space");
 
     const res = await request(app)
       .get(`/workspaces/${wsA}`)
