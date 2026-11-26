@@ -9,6 +9,9 @@ interface KanbanColumnProps {
   id: string;
   title: string;
   tasks: Task[];
+  disabled?: boolean;
+  onOpenTask?: (task: Task) => void;
+  memberNames?: Record<string, string>;
 }
 
 export function KanbanColumn({
@@ -17,7 +20,8 @@ export function KanbanColumn({
   tasks,
   disabled,
   onOpenTask,
-}: KanbanColumnProps & { disabled?: boolean; onOpenTask?: (task: Task) => void }) {
+  memberNames,
+}: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: id,
     data: { type: "Column", id },
@@ -42,13 +46,19 @@ export function KanbanColumn({
       >
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} disabled={disabled} onOpen={onOpenTask} />
+            <TaskCard
+              key={task.id}
+              task={task}
+              disabled={disabled}
+              onOpen={onOpenTask}
+              memberNames={memberNames}
+            />
           ))}
         </SortableContext>
 
         {tasks.length === 0 && (
           <div className="flex h-24 items-center justify-center rounded-xl border-2 border-dashed text-sm text-muted-foreground">
-            Drop tasks here
+            {disabled ? "No tasks" : "Drop tasks here"}
           </div>
         )}
       </div>
