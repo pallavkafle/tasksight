@@ -10,7 +10,11 @@ interface TaskCardProps {
   task: Task;
 }
 
-export function TaskCard({ task, disabled }: TaskCardProps & { disabled?: boolean }) {
+export function TaskCard({
+  task,
+  disabled,
+  onOpen,
+}: TaskCardProps & { disabled?: boolean; onOpen?: (task: Task) => void }) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { type: "Task", task },
@@ -44,6 +48,10 @@ export function TaskCard({ task, disabled }: TaskCardProps & { disabled?: boolea
       style={style}
       {...attributes}
       {...listeners}
+      onClick={() => onOpen?.(task)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onOpen?.(task);
+      }}
       className={`group relative flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm hover:shadow-md transition-shadow ${disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`}
     >
       <div className="flex items-start justify-between gap-2">
