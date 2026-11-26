@@ -3,7 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { User, AuthResponse, MeResponse, Workspace, workspaceListSchema } from "@tasksight/shared";
-import { ApiError, fetchApi, setAccessToken } from "./api";
+import { ApiError, fetchApi, setAccessToken, setAuthFailureHandler, waitForApi } from "./api";
+import { WakeScreen } from "@/components/wake-screen";
 
 const WORKSPACE_KEY = "tasksight.workspaceId";
 
@@ -23,6 +24,8 @@ function storeWorkspaceId(id: string | null): void {
     // Storage can be blocked. The choice is then simply not remembered.
   }
 }
+
+type ApiState = "ready" | "waking" | "down";
 
 interface AuthContextType {
   user: User | null;
@@ -44,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [apiState, setApiState] = useState<ApiState>("ready");
 
   const refreshWorkspaces = useCallback(async (preferId?: string) => {
     const raw = await fetchApi<unknown>("/workspaces");
@@ -64,20 +68,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     storeWorkspaceId(id);
   }, []);
 
-  useEffect(() => {
-    async function checkSession() {
-      try {
-        const data = await fetchApi<MeResponse>("/auth/me");
-        setUser(data.user);
-        await refreshWorkspaces();
-      } catch {
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
+  // Drops everything tied to the session. The protected layout then redirects to /login.
+  const clearSession = useCallback(() => {
+    setAccessToken(null);
+    setUser(null);
+    setWorkspaces([]);
+    setWorkspaceId(null);
+    storeWorkspaceId(null);
+    queryClient.clear();
+  }, [queryClient]);
+
+  const checkSession = useCallback(async () => {
+    const up = await waitForApi(() => setApiState("waking"));
+    if (!up) {
+      setApiState("down");
+      setIsLoading(false);
+      return;
     }
-    checkSession();
+    setApiState("ready");
+
+    try {
+      const data = await fetchApi<MeResponse>("/auth/me");
+      setUser(data.user);
+      await refreshWorkspaces();
+    } catch {
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, [refreshWorkspaces]);
+
+  useEffect(() => {
+    setAuthFailureHandler(clearSession);
+    return () => setAuthFailureHandler(null);
+  }, [clearSession]);
+
+  useEffect(() => {
+    void Promise.resolve().then(() => checkSession());
+  }, [checkSession]);
+
+  const retryConnection = () => {
+    setIsLoading(true);
+    setApiState("waking");
+    void checkSession();
+  };
 
   const login = async (email: string, password: string) => {
     const data = await fetchApi<AuthResponse>("/auth/login", {
@@ -105,14 +139,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore
     } finally {
-      setAccessToken(null);
-      setUser(null);
-      setWorkspaces([]);
-      setWorkspaceId(null);
-      storeWorkspaceId(null);
-      queryClient.clear();
+      clearSession();
     }
   };
+
+  if (apiState !== "ready") {
+    return <WakeScreen failed={apiState === "down"} onRetry={retryConnection} />;
+  }
 
   return (
     <AuthContext.Provider
