@@ -40,5 +40,8 @@ const userSchema = new Schema(
   },
 );
 
+userSchema.index({ "refreshTokens.tokenHash": 1 });
+userSchema.index({ "refreshTokens.previousTokenHash": 1 });
+
 export type UserDoc = HydratedDocument<InferSchemaType<typeof userSchema>>;
 export const User = model("User", userSchema);
