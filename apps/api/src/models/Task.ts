@@ -28,6 +28,7 @@ const taskSchema = new Schema(
       },
     },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    completedAt: { type: Date, default: null },
     version: { type: Number, default: 0, required: true },
     embeddingStatus: { type: String, enum: ["clean", "dirty"], default: "dirty", required: true },
   },
@@ -53,6 +54,7 @@ const taskSchema = new Schema(
 
 taskSchema.index({ workspaceId: 1, status: 1 });
 taskSchema.index({ workspaceId: 1, dueDate: 1 });
+taskSchema.index({ workspaceId: 1, completedAt: 1 });
 
 export type TaskDoc = HydratedDocument<InferSchemaType<typeof taskSchema>>;
 export const Task = model("Task", taskSchema);
