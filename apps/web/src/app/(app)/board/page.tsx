@@ -15,6 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { KanbanColumn } from "@/components/kanban-column";
 import { CreateTaskDialog } from "@/components/create-task-dialog";
+import { NoWorkspace } from "@/components/no-workspace";
 
 const COLUMNS: { id: TaskStatus; title: string }[] = [
   { id: "todo", title: "To Do" },
@@ -101,7 +102,7 @@ export default function KanbanPage() {
     }
   }
 
-  if (!workspaceId) return <div className="p-8 text-muted-foreground">Loading workspace...</div>;
+  if (!workspaceId) return <NoWorkspace />;
   if (isLoading) return <div className="p-8 text-muted-foreground">Loading tasks...</div>;
   if (error) return <div className="p-8 text-red-500">Error loading tasks</div>;
 
