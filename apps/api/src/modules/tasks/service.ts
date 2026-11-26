@@ -31,6 +31,7 @@ interface TaskRaw {
   createdBy: unknown;
   version: number;
   embeddingStatus: "clean" | "dirty";
+  completedAt?: Date | string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -70,6 +71,7 @@ function toTaskResponse(t: TaskRaw): TaskResponse {
     createdBy: String(t.createdBy),
     version: t.version,
     embeddingStatus: t.embeddingStatus,
+    completedAt: t.completedAt ? new Date(t.completedAt).toISOString() : null,
     createdAt: new Date(t.createdAt).toISOString(),
     updatedAt: new Date(t.updatedAt).toISOString(),
   };
@@ -108,6 +110,7 @@ export async function create(
     labels: input.labels ?? [],
     assigneeId: input.assigneeId ?? null,
     subtasks: input.subtasks ?? [],
+    completedAt: input.status === "done" ? new Date() : null,
   });
   return toTaskResponse(doc.toObject() as unknown as TaskRaw);
 }
@@ -133,6 +136,7 @@ export async function update(
   const prevDesc = doc.description ?? "";
   const prevSub = (doc.subtasks ?? []).map((s) => ({ title: s.title, done: s.done }));
   const prevTitle = doc.title;
+  const prevStatus = doc.status;
 
   const titleChanged = input.title !== undefined && input.title !== prevTitle;
   const descChanged = input.description !== undefined && input.description !== prevDesc;
@@ -147,6 +151,9 @@ export async function update(
   if (input.labels !== undefined) doc.set("labels", input.labels);
   if (input.assigneeId !== undefined) doc.set("assigneeId", input.assigneeId ?? null);
   if (input.subtasks !== undefined) doc.set("subtasks", input.subtasks);
+
+  if (doc.status === "done" && prevStatus !== "done") doc.completedAt = new Date();
+  else if (doc.status !== "done" && prevStatus === "done") doc.completedAt = null;
 
   doc.version = (doc.version ?? 0) + 1;
   if (titleChanged || descChanged || subChanged) doc.embeddingStatus = "dirty";

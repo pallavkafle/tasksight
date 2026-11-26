@@ -43,6 +43,7 @@ export const taskSchema = z.object({
   createdBy: z.string(),
   version: z.number().int().nonnegative(),
   embeddingStatus: z.enum(["clean", "dirty"]),
+  completedAt: z.string().nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -97,3 +98,30 @@ export const taskListResponseSchema = z.object({
   nextCursor: z.string().nullable(),
 });
 export type TaskListResponse = z.infer<typeof taskListResponseSchema>;
+
+// GET /workspaces/:workspaceId/tasks/stats
+export const taskStatsQuerySchema = z.object({
+  tz: z
+    .string()
+    .max(64)
+    .refine((value) => {
+      try {
+        new Intl.DateTimeFormat("en-US", { timeZone: value });
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Invalid time zone")
+    .default("UTC"),
+});
+export type TaskStatsQuery = z.infer<typeof taskStatsQuerySchema>;
+
+const countSchema = z.number().int().nonnegative();
+
+export const taskStatsResponseSchema = z.object({
+  counts: z.object({ todo: countSchema, in_progress: countSchema, done: countSchema }),
+  total: countSchema,
+  completedByDay: z.array(z.object({ date: z.string(), count: countSchema })),
+  completedLast7Days: countSchema,
+});
+export type TaskStatsResponse = z.infer<typeof taskStatsResponseSchema>;

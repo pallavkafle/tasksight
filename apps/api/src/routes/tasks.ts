@@ -2,9 +2,11 @@ import { Router } from "express";
 import {
   createTaskSchema,
   taskListQuerySchema,
+  taskStatsQuerySchema,
   updateTaskSchema,
   type CreateTaskInput,
   type TaskListQuery,
+  type TaskStatsQuery,
   type UpdateTaskInput,
 } from "@tasksight/shared";
 import { param } from "../middleware/param";
@@ -13,6 +15,7 @@ import { requireRole } from "../middleware/requireRole";
 import { validateBody } from "../middleware/validate";
 import { validateQuery } from "../middleware/validateQuery";
 import * as service from "../modules/tasks/service";
+import { getTaskStats } from "../modules/tasks/stats";
 
 export const taskRouter = Router();
 
@@ -39,6 +42,19 @@ taskRouter.post(
       req.valid?.body as CreateTaskInput,
     );
     res.status(201).json({ task });
+  },
+);
+
+// Must stay above /tasks/:taskId, otherwise "stats" would be read as a task id.
+taskRouter.get(
+  "/workspaces/:workspaceId/tasks/stats",
+  requireAuth,
+  requireRole("viewer"),
+  validateQuery(taskStatsQuerySchema),
+  async (req, res) => {
+    const { tz } = req.valid?.query as TaskStatsQuery;
+    const result = await getTaskStats(param(req, "workspaceId"), tz);
+    res.status(200).json(result);
   },
 );
 
