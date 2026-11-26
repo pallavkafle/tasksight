@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchApi } from "@/lib/api";
-import { Task, TaskStatus, Workspace } from "@tasksight/shared";
+import { ApiError, fetchApi } from "@/lib/api";
+import { Task, TaskStatus, Workspace, taskStatusSchema } from "@tasksight/shared";
 import {
   DndContext,
   DragEndEvent,
@@ -24,6 +25,7 @@ const COLUMNS: { id: TaskStatus; title: string }[] = [
 export default function KanbanPage() {
   const { workspaceId, user } = useAuth();
   const queryClient = useQueryClient();
+  const [moveError, setMoveError] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -56,6 +58,7 @@ export default function KanbanPage() {
         body: JSON.stringify({ status }),
       }),
     onMutate: async ({ taskId, status }) => {
+      setMoveError(null);
       await queryClient.cancelQueries({ queryKey: ["tasks", workspaceId] });
       const previousData = queryClient.getQueryData<{ items: Task[] }>(["tasks", workspaceId]);
 
@@ -67,7 +70,8 @@ export default function KanbanPage() {
       }
       return { previousData };
     },
-    onError: (_err, _newTodo, context) => {
+    onError: (err, _newTodo, context) => {
+      setMoveError(err instanceof ApiError ? err.message : "Could not move the task");
       if (context?.previousData) {
         queryClient.setQueryData(["tasks", workspaceId], context.previousData);
       }
@@ -83,8 +87,13 @@ export default function KanbanPage() {
     const { active, over } = event;
     if (!over) return;
 
-    const taskId = active.id as string;
-    const newStatus = over.id as TaskStatus;
+    const taskId = String(active.id);
+    // Dropping on a card reports that card's id, so use the card's own column instead.
+    const overData = over.data.current;
+    const target = overData?.type === "Task" ? overData.task?.status : over.id;
+    const parsed = taskStatusSchema.safeParse(target);
+    if (!parsed.success) return;
+    const newStatus = parsed.data;
 
     const task = data?.items.find((t) => t.id === taskId);
     if (task && task.status !== newStatus) {
@@ -111,6 +120,12 @@ export default function KanbanPage() {
         </div>
         {!isViewer && <CreateTaskDialog />}
       </div>
+
+      {moveError && (
+        <p role="alert" className="mb-4 text-sm text-destructive">
+          {moveError}
+        </p>
+      )}
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="flex flex-1 gap-6 overflow-x-auto pb-4 items-start h-full">
