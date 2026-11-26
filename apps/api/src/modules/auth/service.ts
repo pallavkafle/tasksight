@@ -95,7 +95,20 @@ export async function login(input: LoginInput): Promise<AuthResult> {
   };
 }
 
+// Two requests with the same cookie can race, and the second save then fails with a Mongoose
+// VersionError. Retrying lets it take the grace-window path instead of returning a 500.
 export async function refresh(rawFromCookie: string): Promise<AuthResult> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await refreshOnce(rawFromCookie);
+    } catch (err) {
+      const isVersionConflict = err instanceof Error && err.name === "VersionError";
+      if (!isVersionConflict || attempt >= 3) throw err;
+    }
+  }
+}
+
+async function refreshOnce(rawFromCookie: string): Promise<AuthResult> {
   const hash = hashRefreshToken(rawFromCookie);
   const now = new Date();
 
