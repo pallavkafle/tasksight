@@ -2,6 +2,7 @@ import type { AddMemberInput, CreateWorkspaceInput, WorkspaceRole } from "@tasks
 import { AppError } from "../../errors/AppError";
 import { Workspace, type WorkspaceDoc } from "../../models/Workspace";
 import { WorkspaceMember } from "../../models/WorkspaceMember";
+import { Task } from "../../models/Task";
 import { User } from "../../models/User";
 
 export interface WorkspaceResponse {
@@ -99,4 +100,9 @@ export async function removeMember(workspaceId: string, targetUserId: string): P
     if (owners <= 1) throw new AppError("FORBIDDEN", "Cannot remove the last owner");
   }
   await WorkspaceMember.deleteOne({ _id: target._id });
+  // Unassign tasks that pointed at the removed member so nothing dangles.
+  await Task.updateMany(
+    { workspaceId, assigneeId: targetUserId },
+    { $set: { assigneeId: null }, $inc: { version: 1 } },
+  );
 }

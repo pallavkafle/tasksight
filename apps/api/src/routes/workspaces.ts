@@ -7,7 +7,7 @@ import {
   type CreateWorkspaceInput,
   type UpdateMemberRoleInput,
 } from "@tasksight/shared";
-import { param } from "../middleware/param";
+import { param, objectIdParam } from "../middleware/param";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireRole } from "../middleware/requireRole";
 import { validateBody } from "../middleware/validate";
@@ -59,7 +59,7 @@ workspaceRouter.patch(
   async (req, res) => {
     await service.changeRole(
       param(req, "workspaceId"),
-      param(req, "userId"),
+      objectIdParam(req, "userId"),
       (req.valid?.body as UpdateMemberRoleInput).role,
     );
     res.status(204).end();
@@ -71,7 +71,7 @@ workspaceRouter.delete(
   requireAuth,
   requireRole("owner"),
   async (req, res) => {
-    await service.removeMember(param(req, "workspaceId"), param(req, "userId"));
+    await service.removeMember(param(req, "workspaceId"), objectIdParam(req, "userId"));
     res.status(204).end();
   },
 );

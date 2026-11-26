@@ -1,4 +1,4 @@
-import mongoose, { isValidObjectId, type PipelineStage } from "mongoose";
+import mongoose, { isObjectIdOrHexString, type PipelineStage } from "mongoose";
 import type {
   CreateTaskInput,
   TaskListQuery,
@@ -7,7 +7,7 @@ import type {
 } from "@tasksight/shared";
 import { AppError } from "../../errors/AppError";
 import { Task } from "../../models/Task";
-import { User } from "../../models/User";
+import { WorkspaceMember } from "../../models/WorkspaceMember";
 
 const SENTINEL_MAX = new Date(8640000000000000);
 const SENTINEL_MIN = new Date(-8640000000000000);
@@ -44,7 +44,7 @@ function decodeCursor(s: string): { v: Date; i: string } {
   try {
     const payload = JSON.parse(Buffer.from(s, "base64url").toString()) as CursorPayload;
     const v = new Date(payload.v);
-    if (Number.isNaN(v.getTime()) || !isValidObjectId(payload.i)) {
+    if (Number.isNaN(v.getTime()) || !isObjectIdOrHexString(payload.i)) {
       throw new Error("bad cursor");
     }
     return { v, i: payload.i };
@@ -75,14 +75,19 @@ function toTaskResponse(t: TaskRaw): TaskResponse {
   };
 }
 
-async function assertAssigneeExists(assigneeId: string | null | undefined): Promise<void> {
+async function assertAssigneeExists(
+  workspaceId: string,
+  assigneeId: string | null | undefined,
+): Promise<void> {
   if (!assigneeId) return;
-  if (!isValidObjectId(assigneeId)) {
-    throw new AppError("VALIDATION_ERROR", "Invalid assigneeId");
+  const msg = "Assignee must be a member of this workspace";
+  const details = [{ path: "assigneeId", message: msg }];
+  if (!isObjectIdOrHexString(assigneeId)) {
+    throw new AppError("VALIDATION_ERROR", msg, details);
   }
-  const exists = await User.exists({ _id: assigneeId });
-  if (!exists) {
-    throw new AppError("NOT_FOUND", "Assignee not found");
+  const isMember = await WorkspaceMember.exists({ workspaceId, userId: assigneeId });
+  if (!isMember) {
+    throw new AppError("VALIDATION_ERROR", msg, details);
   }
 }
 
@@ -91,7 +96,7 @@ export async function create(
   userId: string,
   input: CreateTaskInput,
 ): Promise<TaskResponse> {
-  await assertAssigneeExists(input.assigneeId);
+  await assertAssigneeExists(workspaceId, input.assigneeId);
   const doc = await Task.create({
     workspaceId,
     createdBy: userId,
@@ -108,7 +113,7 @@ export async function create(
 }
 
 export async function getById(workspaceId: string, taskId: string): Promise<TaskResponse> {
-  if (!isValidObjectId(taskId)) throw new AppError("NOT_FOUND", "Task not found");
+  if (!isObjectIdOrHexString(taskId)) throw new AppError("NOT_FOUND", "Task not found");
   const doc = await Task.findOne({ _id: taskId, workspaceId });
   if (!doc) throw new AppError("NOT_FOUND", "Task not found");
   return toTaskResponse(doc.toObject() as unknown as TaskRaw);
@@ -119,11 +124,11 @@ export async function update(
   taskId: string,
   input: UpdateTaskInput,
 ): Promise<TaskResponse> {
-  if (!isValidObjectId(taskId)) throw new AppError("NOT_FOUND", "Task not found");
+  if (!isObjectIdOrHexString(taskId)) throw new AppError("NOT_FOUND", "Task not found");
   const doc = await Task.findOne({ _id: taskId, workspaceId });
   if (!doc) throw new AppError("NOT_FOUND", "Task not found");
 
-  await assertAssigneeExists(input.assigneeId);
+  await assertAssigneeExists(workspaceId, input.assigneeId);
 
   const prevDesc = doc.description ?? "";
   const prevSub = (doc.subtasks ?? []).map((s) => ({ title: s.title, done: s.done }));
@@ -151,7 +156,7 @@ export async function update(
 }
 
 export async function remove(workspaceId: string, taskId: string): Promise<void> {
-  if (!isValidObjectId(taskId)) throw new AppError("NOT_FOUND", "Task not found");
+  if (!isObjectIdOrHexString(taskId)) throw new AppError("NOT_FOUND", "Task not found");
   const res = await Task.deleteOne({ _id: taskId, workspaceId });
   if (res.deletedCount === 0) throw new AppError("NOT_FOUND", "Task not found");
 }
@@ -162,7 +167,7 @@ export interface ListResult {
 }
 
 export async function list(workspaceId: string, q: TaskListQuery): Promise<ListResult> {
-  if (!isValidObjectId(workspaceId)) throw new AppError("NOT_FOUND", "Workspace not found");
+  if (!isObjectIdOrHexString(workspaceId)) throw new AppError("NOT_FOUND", "Workspace not found");
 
   const [sortField, sortDirStr] = (q.sort as string).split(":") as [string, string];
   const dir = sortDirStr === "asc" ? 1 : -1;
@@ -173,7 +178,7 @@ export async function list(workspaceId: string, q: TaskListQuery): Promise<ListR
   if (q.status) match.status = q.status;
   if (q.priority) match.priority = q.priority;
   if (q.assigneeId) {
-    if (!isValidObjectId(q.assigneeId)) {
+    if (!isObjectIdOrHexString(q.assigneeId)) {
       throw new AppError("VALIDATION_ERROR", "Invalid assigneeId filter");
     }
     match.assigneeId = new mongoose.Types.ObjectId(q.assigneeId);
