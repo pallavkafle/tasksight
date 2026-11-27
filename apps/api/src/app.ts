@@ -39,6 +39,7 @@ export function createApp() {
     rateLimit({
       windowMs: env.RATE_LIMIT_WINDOW_MS,
       limit: env.RATE_LIMIT_MAX,
+      skip: () => env.RATE_LIMIT_ENABLED !== "true",
       standardHeaders: "draft-7",
       legacyHeaders: false,
       handler: (_req, _res, next) =>
@@ -65,6 +66,7 @@ export function createApp() {
     const bruteLimiter = rateLimit({
       windowMs: env.AUTH_BRUTE_LIMIT_WINDOW_MS,
       limit: env.AUTH_BRUTE_LIMIT_MAX,
+      skipSuccessfulRequests: true,
       standardHeaders: "draft-7",
       legacyHeaders: false,
       handler: (_req, _res, next) =>
