@@ -154,7 +154,7 @@ export function CommandBar() {
             ref={inputRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="Ask Sathi or type a task (Ctrl+K)..."
+            placeholder="Ask Insight or type a task (Ctrl+K)..."
             className="border-0 bg-transparent shadow-none focus-visible:ring-0 text-base"
             disabled={isParsing}
           />

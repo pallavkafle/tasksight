@@ -9,7 +9,7 @@ type Message = { role: "user" | "assistant"; content: string };
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Hi! I am Sathi. Ask me anything about your workspace." },
+    { role: "assistant", content: "Hi! I am Insight. Ask me anything about your workspace." },
   ]);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
