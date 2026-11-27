@@ -1,16 +1,21 @@
 # Memory: TaskSight (my notes)
 
 ## About me and the project
+
 - I'm Pallav Kafle, a Computer Engineering student at Himalaya College of Engineering (TU). I have a background in MERN and generative AI, and I'm aiming for an AI Engineer role.
 - TaskSight is my rebuild of an old deployed expense tracker (which stays live as the "before" version) to practice modern full-stack engineering and AI integration.
-- Repo: `C:\D_Drive_Backup\PROJECTS\tasksight` · GitHub `pallavkafle/tasksight`. Windows, VS Code, PowerShell. Project name: TaskSight (renamed 2026-11-20 from TaskSathi after verifying GitHub/npm/domain availability).
-- Time budget: ~10 to 12 hours a week.
+- Repo: `C:\D_Drive_Backup\PROJECTS\tasksight`, GitHub `pallavkafle/tasksight`. Windows, VS Code, PowerShell. Name: TaskSight (renamed 2026-11-20 from TaskSathi after checking GitHub, npm and domains).
+- Time budget: about 10 to 12 hours a week.
+- Lane A (API, shared, CI) and Lane B (web) are AI assistants. When one is out of quota another covers it (rule.md section 1).
 
-## Current state
-- **Done on `main`:** monorepo tooling, shared contract, CI, Express 5 skeleton, Next.js scaffold, Phase 1 complete (1.6–1.11), 2.1 Workspaces + RBAC (`cf85b11`). 1.12 folded into 2.7.
-- **Now:** 2.2 Task API (`feat/api-tasks`). Contract in `architecture.md` section 5 extended with 5 task endpoints.
-- **Atlas Setup (Task 1.6):** M0 cluster created. DB user configured. `MONGODB_URI` saved in `apps/api/.env` and tested. Mongoose installed.
-- **Next:** Lane A starts 1.7 (User model) and 1.8 (Auth API). Lane B is blocked until then to start 1.11 (Web API client).
+## Current state (2026-11-27)
+
+- Phase 1 and Phase 2 of `task.md` are done, except 1.13 (skeleton deploy, not started). Nothing is deployed.
+- Phase 2 on `main`: workspaces with 3 roles (#13), task API with filters and cursor pagination (#15), CI with tests and a MongoDB binary cache (#16, #20), app shell (#17), auth rate limits and auto-workspace (#18), Kanban (#19), web fixes (#21), task dialog and members page (#22), dashboard (#23), id validation and assignee membership (#24), then the work done by Claude: card-drop fix and workspace switcher, members management, task dialog with subtask panel, board filters, auth resilience (wake screen), `completedAt` plus task stats, refresh race fix, dashboard on real stats, members page layout fix, rate-limit fix. Use `git log` for hashes.
+- Records: `docs/issues.md` is the issues and errors ledger. `docs/improvements.md` is the ideas stash (nothing there is built unless I ask).
+- Not yet independently reviewed: #24, the Claude PRs above, and this docs PR. Commit `6565690` was pushed to `main` by mistake.
+- Next: hardening tasks H1 and H2 (task.md Phase 2.5), then Phase 3 starting with 3.1, with the skeleton deploy (1.13) after 3.3.
+- Manual items I still owe: Gemini API key and model IDs, Render and Vercel connected to GitHub, Atlas MongoDB version and vector index check, branch protection on `main`.
 
 ## Key decisions
 
@@ -22,7 +27,7 @@
 | Same-origin API through Next.js rewrites (`SameSite=Lax` cookie, `Path=/api/auth`) | Third-party cookies fail on Safari and Firefox across Vercel and Render |
 | Shared package exports raw TypeScript | Fast cross-package development; `transpilePackages` for web, `tsup` for the API build |
 | Express 5 | Async errors reach the handler; `req.query` is read-only, so validation uses `req.valid` |
-| Refresh grace window, default 10 s, from env | Two tabs refreshing at once must not log me out |
+| Refresh grace window, default 10 s, from env; the server retries a refresh on a version conflict | Two tabs refreshing at once must not log me out |
 | Argon2id at 19456 KiB, t=2, p=1, concurrency cap 2; refresh tokens use sha256 | The Render free container has 512 MB RAM and 0.1 CPU |
 | No mock API for the web client | Mocks hide cookie, proxy and refresh bugs |
 | PWA is installable only in v1 | Service-worker caching of RSC payloads breaks navigation |
@@ -31,10 +36,18 @@
 | Agent: 2 tools, version checks, TTL, idempotency key, role re-check | Stale proposals must not corrupt data |
 | Replay evals on every PR, live evals on demand, no LLM judge | Free-tier quota and run-to-run variance |
 | Models, IDs and limits from env and the AI Studio console | Providers change them without notice |
-| Squash merge for every PR | One commit per task on `main` |
-| Extend section 5 contract incrementally as endpoints ship | Doc drift between code and contract is worse than a slightly-growing frozen section; each change is reviewed in its PR |
-| Aggregate pipeline for task list, `.find()` for task CRUD | `sanitizeFilter: true` breaks `$gte/$lte/$ifNull/$or`; aggregate bypasses it. Filter/sort/pagination all in one query beats 5 client-side passes |
-| Cursor-based pagination with base64url JSON | Offset pagination duplicates/skips on write; cursor stable regardless of concurrent inserts. `{v, i}` tuple survives sort changes |
+| Squash merge for every PR; record PR numbers, not branch hashes | One commit per task on `main`; a squash changes the hash |
+| Extend the section 5 contract as endpoints ship (done: `completedAt`, tasks stats, register creates a workspace) | Doc drift between code and contract is worse than a growing contract |
+| Aggregate pipeline for task list and stats, `.find()` for task CRUD | `sanitizeFilter: true` breaks `$gte/$lte/$ifNull/$or`; aggregate bypasses it and does not cast ids |
+| Cursor-based pagination with base64url JSON | Offset pagination duplicates or skips on write |
+| Network errors, 429 and 5xx do not log the user out; only a rejected refresh does (D-23) | A cold or busy API must not end a valid session |
+| Nav is Dashboard, Board, Members only | No Project model; Ask Sathi appears when built |
+| Task dialog is "Path B": dialog plus a separate subtask panel | Subtasks get their own component for the later AI breakdown |
+| recharts for the weekly chart, hand-written SVG for sparklines | Chart library accepted after the fact (D-18) |
+| Workspace choice kept in `localStorage` (try/catch) | A user with several workspaces keeps their place |
+| Board loads pages of 100 up to 300 tasks | The first 100-task cap hid tasks silently |
+| `RATE_LIMIT_ENABLED=false` disables every limiter; login limiter counts failures only; defaults 600 global, 300 for `/auth/*` | A normal session hit the old 100-per-15-minutes limit (A-25) |
+| Tagline "clarity into what matters"; in-app line "your AI task companion" | Resolves D-04 without code changes |
 
 ## Lessons
 
@@ -42,23 +55,28 @@
 |---|---|
 | `corepack enable` failed (EPERM) | Use `npm i -g pnpm` |
 | `npm.ps1` blocked | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
-| Pasting several commands broke PowerShell | One command, Enter, wait |
+| Pasting several commands broke PowerShell | One command, Enter, wait (several `Edit-Text` calls in one paste work) |
 | `pnpm add typescript` pulled 7.0.2 | Pin `typescript@~6.0.0` |
 | `ERR_PNPM_IGNORED_BUILDS: esbuild` | `allowBuilds` in `pnpm-workspace.yaml` |
 | Stray empty file in `apps/api` | Check `git status` and the file list before committing |
 | Merged a PR normally instead of squashing and clicked Revert on it | Closed the revert PR, deleted the extra branches; use Squash and merge only |
 | Typo in a branch name | `git branch -m` before the first push |
-| PowerShell `Set-Content` breaks Next.js/JSON | It adds a BOM. Use `[System.IO.File]::WriteAllText` with `UTF8Encoding($false)` |
-| Folder rename failed ("file in use") | VS Code holds locks on the folder. Close it completely (or kill via Task Manager) before renaming. |
-| Atlas connection "bad auth" | Autogenerated password had special characters. Reset to an alphanumeric-only password. |
+| PowerShell `Set-Content` breaks Next.js and JSON | It adds a BOM. Use `[System.IO.File]::WriteAllText` with `UTF8Encoding($false)` |
+| Folder rename failed ("file in use") | VS Code holds locks on the folder. Close it completely before renaming |
+| Atlas connection "bad auth" | Autogenerated password had special characters. Reset to an alphanumeric-only password |
+| A PowerShell helper named `rp` did nothing | `rp` is an alias of `Remove-ItemProperty`. Use `Edit-Text` and `wf` |
+| A file called `tash list` appeared in the repo | The git pager's save key created it. Use `git --no-pager` |
+| Docs showed odd characters instead of dashes and garbled Devanagari | They were double-encoded. Fixed 2026-11-27. Read files with `-Encoding UTF8` |
+| Commit `6565690` went straight to `main` | Always use a branch and PR; turn on branch protection |
+| Lane summaries did not match git (PR #22 claimed a dialog that arrived later) | Check every claim with a git command |
+| Local login lockout after a few test logins | The global limiter ignored `RATE_LIMIT_ENABLED`. Fixed |
+| Members page cards were cut off | `h-full` on the page plus `overflow-hidden` on `Card`. Let the page grow |
+| Atlas Vector Search cannot be tested in mongodb-memory-server | Keep it behind a repository interface and use a fake in CI |
 
 ## Open items
-- **Gemini:** create the API key (env only). Check model IDs and limits in AI Studio before Phase 3.
-- **Accounts:** connect Render and Vercel to GitHub before the first deploy.
-- **Verify later:** SSE through the Vercel rewrite; `req.ip` and `TRUST_PROXY_HOPS` behind Vercel and Render; whether Gemma handles structured JSON as well as Flash Lite.
 
-## 2026-11-25 updates
-
-- Phase 2 closing: 2.1, 2.2, 2.3, 2.4 done. 2.5, 2.6, 2.7 remain.
-- fix(api): env-driven auth rate limits + auto-workspace on register (360e803).
-- feat(web): kanban board finished by Lane A after Lane B rate-limited. Explicit user authorization; rule 1 exception noted here. Fixed from Lane B WIP: QueryClientProvider never mounted, /workspaces response shape (obj not array), /tasks items vs tasks, drop-on-card handler. Browser-tested end-to-end.
+- Gemini: create the API key (env only) and check model IDs and limits in AI Studio before Phase 3.
+- Accounts: connect Render and Vercel to GitHub before the first deploy.
+- Verify at the first deploy: SSE through the Vercel rewrite; `req.ip` and `TRUST_PROXY_HOPS` behind Vercel and Render (A-02); whether Gemma handles structured JSON as well as Flash Lite.
+- Decide D-07 before task 3.6: what "restricted tasks" and comments mean (default: workspace-level filter, tasks only).
+- Everything else is in `docs/issues.md`.

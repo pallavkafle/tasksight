@@ -33,7 +33,7 @@ It replaces my deployed MERN expense tracker (`Expense-Tracker`), which was a tu
 | 6 | Agent with approval | The model proposes actions using 2 tools (generate subtasks, reschedule overdue). The UI shows a diff. Nothing is written until I approve |
 
 ## 5. Non-goals
-- **v1.1:** offline read and service-worker caching, multi-tab sync (BroadcastChannel), hybrid keyword + vector retrieval, admin role, standalone subtask documents, calendar view.
+- **v1.1:** offline read and service-worker caching, multi-tab sync (BroadcastChannel), hybrid keyword + vector retrieval, admin role, standalone subtask documents, calendar view, nested projects and an inbox in the navigation.
 - **v1.5:** focus sessions, AI "Today plan", habit streaks, weekly AI review, Web Push reminders, voice quick-add.
 - **v2:** Expo/React Native client on the same API, real-time collaboration, a small Python service.
 - **Out of scope:** Slack and Notion integrations, document storage, billing, fine-tuning, LLM-as-judge evals.
@@ -57,6 +57,8 @@ Web app, installable as a PWA (manifest only in v1, no offline caching). One cod
 | 4 | Embeddings, vector search, Ask Sathi with citations, subtasks, replay evals | Evals replay in CI and retrieval respects workspace filters |
 | 5 | Approval agent, live eval recordings, README, ADR, demo video | I can walk an interviewer through the whole app |
 
+**Status on 2026-11-27:** Week 1 is done except the skeleton deploy (task 1.13). Week 2 is done (workspaces, RBAC, tasks, Kanban, subtasks, shell, theme, dashboard, members page). Weeks 3 to 5 have not started. Before the deploy there is a short hardening step (tasks H1 to H3 in `docs/task.md`).
+
 **Scope freeze:** at the end of Week 3, if the schedule is behind, the agent and the live eval tier become stretch items. A working core (auth, Kanban, quick-add, RAG with citations) ships first.
 
 ## 9. Portfolio deliverables
@@ -65,6 +67,8 @@ Web app, installable as a PWA (manifest only in v1, no offline caching). One cod
 - A 2-minute video: command bar, a task created, Ask Sathi with citations, the eval table.
 
 ## 10. Risks
+
+The live list of issues is `docs/issues.md`. Ideas that are not built are in `docs/improvements.md`.
 
 | Risk | Mitigation |
 |---|---|
