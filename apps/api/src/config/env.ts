@@ -27,6 +27,24 @@ const envSchema = z.object({
   TRUST_PROXY_HOPS: z.coerce.number().int().nonnegative().default(1),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(14),
   REFRESH_GRACE_SECONDS: z.coerce.number().int().nonnegative().default(10),
+
+  // LLM. The key is optional: without it every call returns the sample fallback.
+  GEMINI_API_KEY: z.string().trim().default(""),
+  GEMINI_TEXT_MODEL: z.string().min(1).default("gemini-3.1-flash-lite"),
+  GEMINI_FALLBACK_MODEL: z.string().min(1).default("gemini-3.5-flash-lite"),
+  GEMINI_EMBED_MODEL: z.string().min(1).default("gemini-embedding-001"),
+  EMBED_DIMENSIONS: z.coerce.number().int().positive().default(768),
+  LLM_TEXT_RPM: z.coerce.number().int().positive().default(15),
+  LLM_TEXT_RPD: z.coerce.number().int().positive().default(500),
+  LLM_FALLBACK_RPM: z.coerce.number().int().positive().default(5),
+  LLM_FALLBACK_RPD: z.coerce.number().int().positive().default(20),
+  LLM_EMBED_RPM: z.coerce.number().int().positive().default(100),
+  LLM_EMBED_RPD: z.coerce.number().int().positive().default(1000),
+  LLM_RETRY_ATTEMPTS: z.coerce.number().int().min(1).max(6).default(3),
+  LLM_RETRY_BASE_MS: z.coerce.number().int().positive().default(500),
+  LLM_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  LLM_CACHE_MAX_ENTRIES: z.coerce.number().int().positive().default(500),
+  LLM_USER_DAILY_QUOTA: z.coerce.number().int().positive().default(30),
 });
 
 const parsed = envSchema.safeParse(process.env);
