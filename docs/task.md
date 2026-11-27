@@ -2,94 +2,181 @@
 
 Lane A owns `apps/api`, `packages/shared` and CI. Lane B owns `apps/web`. "Manual" means setup I do myself.
 
-## Phase 1 â€“ Foundations & Auth
+## Phase 1 - Foundations & Auth
+
+Phase 1 is complete except 1.13 (skeleton deploy).
 
 ### 1.1 Monorepo scaffold and tooling (Lane A)
+
+**Status:** Done.
+
 pnpm workspace with `apps/api`, `apps/web`, `packages/shared`. Root scripts for lint, typecheck, format and format:check. TypeScript strict with `noUncheckedIndexedAccess`, ESLint flat config, Prettier, `.gitignore` (`.env` ignored, `.env.example` kept), `.gitattributes`, `.editorconfig`, `packageManager` and `engines` in the root `package.json`, `esbuild` under `allowBuilds`, `@types/node` pinned to `~22`, and the six docs in `docs/`.
 **Done when:** `pnpm install`, `pnpm lint`, `pnpm typecheck` and `pnpm format:check` pass, and the API imports from `@tasksight/shared` and runs under `tsx`.
 
 ### 1.2 Shared contract (Lane A)
+
+**Status:** Done. Extended since: workspace and task schemas, `completedAt`, task stats schemas.
+
 In `packages/shared`: error codes with their HTTP statuses and the error schema (`details` as `Array<{path, message}>`), plus the auth schemas: trimmed lowercase email, password 8 to 128 characters, name 1 to 80, register, login, user (`id`, `name`, `email`), auth response, me response, health response.
 **Done when:** valid input parses, a register body with a blank name, bad email and short password returns 3 issues, an unknown error code is rejected, and typecheck passes.
 
 ### 1.3 CI (Lane A)
+
+**Status:** Done. Extended: tests and a MongoDB binary cache (#16, #20). Still open: a web build step (C-01) and proof that a deliberate type error fails CI (C-05).
+
 GitHub Actions workflow on pull requests and pushes to `main`: checkout, pnpm setup from `packageManager`, Node 22 with pnpm cache, `pnpm install --frozen-lockfile`, lint, typecheck, format:check.
 **Done when:** the workflow is green on a PR, and a throwaway branch with a deliberate type error fails it.
 
 ### 1.4 Express skeleton (Lane A)
+
+**Status:** Done. Open: `/health` has no `no-store` header (A-15); cast errors and oversized bodies return 500 (A-14). `RATE_LIMIT_ENABLED=false` now disables every limiter.
+
 Zod-validated env, Pino logger that redacts the authorization header and cookies, `AppError` with a central error handler (JSON 404, JSON error for invalid request bodies, no raw errors), `/health`, helmet, CORS allowlist with credentials, global rate limiter (429 in the error shape, `/health` exempt), JSON body limit 100 KB, `trust proxy`, `app.ts` / `server.ts` split, graceful shutdown on SIGTERM and SIGINT.
 **Done when:** `/health` returns 200 with `status`, `uptime`, `version`; an unknown route returns a 404 in the error shape; CORS headers appear only for allowed origins; malformed JSON returns 400 `VALIDATION_ERROR`; an invalid `PORT` exits with a clear message; with the limit set to 3 the fourth request returns 429 and `/health` still returns 200.
 
 ### 1.5 Web scaffold (Lane B)
+
+**Status:** Done.
+
 Next.js 16.4.6 in `apps/web` (App Router, TypeScript, Tailwind, `src` directory). Delete `apps/web/.gitkeep` before generating. Add `@tasksight/shared` as `workspace:*` and `transpilePackages: ["@tasksight/shared"]`. Use the generated `apps/web/tsconfig.json` and add `noUncheckedIndexedAccess`. Add `eslint-plugin-react-hooks` and `@next/eslint-plugin-next` to the root ESLint config, scoped to `apps/web/**` (check ESLint 10 and TypeScript 6 support on install; do not downgrade either). Add the web tsconfig to the root `typecheck` script only after the file exists. Initialize shadcn and add the dark and light theme tokens from `design.md`.
 **Done when:** the dev server renders a page that imports `APP_NAME` from shared, and `pnpm lint`, `pnpm typecheck` and `pnpm format:check` pass.
 
 ### 1.6 Accounts and infrastructure setup (Manual)
+
+**Status:** Partly confirmed. Atlas cluster and `MONGODB_URI` work. Not confirmed: Gemini key and model IDs, Render and Vercel connections, removal of the old leaked credentials. The owner confirms these before Phase 3.
+
 Check the name: open `TaskSight.xyz` and `TaskSight.com`, search the name on LinkedIn and the Nepal company registry, run `npm view TaskSight`, search GitHub. Create the Atlas M0 cluster with a new DB user, allow my current IP, and store the connection string in `apps/api/.env` as `MONGODB_URI`. Delete or rotate the old leaked Atlas credentials. Note the search-index limit, connection limit and MongoDB version shown in the Atlas UI. Create the Gemini API key (env only) and note the model IDs and limits in the AI Studio console. Connect Render and Vercel to GitHub.
 **Done when:** the name check result is written in `memory.md`, the cluster is active, `.env` is not tracked by git, the old credentials are gone, and the Render and Vercel projects can see the repo.
 
 ### 1.7 User model and database connection (Lane A)
+
+**Status:** Done.
+
 `db/connect.ts` with Mongoose `sanitizeFilter: true`. `User` model with a unique email index and `refreshTokens[]` (`tokenHash`, `familyId`, `expiresAt`, `previousTokenHash`, `previousUsedAt`). A `toJSON` transform that outputs `id`, `name`, `email` only.
 **Done when:** the server connects to Atlas, a script creates a user, a duplicate email is rejected, and the serialized user has exactly `id`, `name` and `email`.
 
 ### 1.8 Auth API (Lane A)
+
+**Status:** Done. Open hardening: A-02 (proxy hops), A-03, A-05, A-06, A-07. Password verify does not dispatch on the hash prefix (not needed yet).
+
 Routes: register, login, refresh, logout, `me`, and a `requireAuth` middleware. Passwords use `@node-rs/argon2` with explicit parameters (19456 KiB, t=2, p=1) behind a semaphore of 2, and verification dispatches on the hash prefix (list the package in `allowBuilds` if its install script is blocked). Access token via `jose`, 15 minutes. Refresh token: random 256-bit value stored as a sha256 hash with a family id, rotation, `REFRESH_TOKEN_TTL_DAYS`, and the `REFRESH_GRACE_SECONDS` window described in `architecture.md` section 4. Cookie: `refreshToken`, `HttpOnly`, `SameSite=Lax`, `Secure` in production, `Path=/api/auth`. A Zod validation middleware that writes to `req.valid`. A stricter limiter on `/auth/*`. Move the rate limiter before `express.json`, send `Cache-Control: no-store`, and replace the fixed `trust proxy 1` with `TRUST_PROXY_HOPS`.
 **Done when:** every route matches the contract in `architecture.md` section 5 in an HTTP client; a refresh inside the grace window succeeds and sets a new cookie; reusing a token after the window revokes the family and returns 401; the cookie flags are correct; passwords never appear in logs or responses.
 
 ### 1.9 Auth tests (Lane A)
+
+**Status:** Done. Added: race test for simultaneous refresh (`tests/auth-race.test.ts`) and a login limiter test. Open: expired refresh token, Secure cookie flag.
+
 Vitest, Supertest and mongodb-memory-server, with the Mongo binary cached in CI. Cases: register, duplicate email, validation errors, login, wrong password, refresh, refresh inside the grace window, reuse after the window, logout, `me` without a token, rate limiting (429), cookie attributes.
 **Done when:** `pnpm test` passes locally and in CI.
 
 ### 1.10 Auth UI (Lane B)
+
+**Status:** Done.
+
 `/login` and `/register` with react-hook-form and the shared Zod schemas. Field errors, loading state, and rendering of the API error shape. No network calls yet.
 **Done when:** both forms validate in the browser with no API running and meet the AA contrast requirement.
 
 ### 1.11 Web API client and same-origin proxy (Lane B)
+
+**Status:** Done in Phase 2 (W6): health check before the first session check, wake screen with a retry state, clean session reset (clears the Query cache) when refresh is rejected. Decision D-23: network errors, 429 and 5xx do not log the user out.
+
 Add the Next.js rewrite `/api/:path*` to `${API_ORIGIN}/:path*` (`API_ORIGIN=http://localhost:4000` in development). `lib/api.ts` is a typed fetch client using `credentials: "include"` and the error shape. It implements the single-flight refresh from `architecture.md` section 4 (loop guard, queue and replay, health preflight, clear state and redirect on failure). The token stays in memory. Add `WakeScreen`, the auth provider, a protected app layout and a logout that clears the TanStack Query cache.
 **Done when:** against the real local API, login, a protected page, logout and a page reload that keeps the session through `/api/auth/refresh` all work, and a deliberately expired access token triggers exactly one refresh.
 
 ### 1.12 Auth integration check (Lane A + B)
+
+**Status:** Done 2026-11-27. The server retries a refresh on a version conflict (A3), a test covers two simultaneous refreshes, and the owner tested two tabs reloading together.
+
 Run the whole auth flow in the browser and check the cookie in dev tools (`HttpOnly`, `Lax`, path `/api/auth`). Test two tabs refreshing at once.
 **Done when:** the flow works end to end and two simultaneous refreshes do not log either tab out.
 
 ### 1.13 Skeleton deploy (Lane A + B)
+
+**Status:** **Open. Not started.** No `render.yaml`, `vercel.json`, API build script or tsup config exists yet. Do it right after H1 and H2 (see Phase 2.5). A minimal version of 4.1 is needed first.
+
 Deploy the API to Render and the web app to Vercel. Build config comes from task 4.1; use a minimal version now if needed. Set `API_ORIGIN`, `CORS_ORIGIN`, `TRUST_PROXY_HOPS` and the auth secrets. Allow `0.0.0.0/0` in Atlas network access with a strong DB password.
 **Done when:** register, login, refresh and logout work on the live URLs.
 
-## Phase 2 â€“ Core Product
+## Phase 2 - Core Product
+
+Phase 2 is complete as of 2026-11-27.
 
 ### 2.1 Workspaces and RBAC (Lane A)
+
+**Status:** Done.
+
 `Workspace` and `WorkspaceMember` models. Routes to create and list workspaces, add a member by email, change a role and remove a member. Roles: owner, member, viewer. A `requireRole` middleware used on every workspace route. The last owner cannot demote themselves or leave.
 **Done when:** tests prove a viewer cannot write, a member cannot manage members, the last owner cannot leave, and a user cannot read another workspace's data.
 
 ### 2.2 Task API (Lane A)
+
+**Status:** Done. Extended: `completedAt`, `GET .../tasks/stats` (A2), assignee must be a workspace member, and a removed member's tasks are unassigned (#24).
+
 Task CRUD with title, description, status, priority, due date, labels, assignee and embedded subtasks (max 30). A `version` counter increments on every update and `embeddingStatus` becomes `dirty` when content changes. Filters (status, priority, assignee, label, due range), sorting and cursor pagination. Indexes `{workspaceId, status}` and `{workspaceId, dueDate}`. Updates whitelist their fields.
 **Done when:** tests cover each filter, pagination across several pages, field whitelisting, version increments, the subtask cap, and role checks.
 
 ### 2.3 App shell and theme (Lane B)
+
+**Status:** Done. Sidebar and bottom nav (Dashboard, Board, Members), workspace switcher with a remembered choice, theme toggle, theme token fix. Nested projects and an inbox were cut (no Project model).
+
 Sidebar with nested projects and count badges, bottom nav on mobile, light and dark theme toggle from the tokens in `design.md`, workspace switcher, protected layout.
 **Done when:** the shell works from 360 px wide to desktop, both themes pass the contrast check, and the toggle persists.
 
 ### 2.4 Kanban board (Lane B)
+
+**Status:** Done. Touch drag, optimistic updates with rollback, filters (priority, assignee, label), initials, label chips, subtask bar, loads up to 300 tasks. Above 300 the board is cut with a notice (W-26).
+
 Columns by status, task cards with priority, due date and label chips, assignee initials and a subtask progress bar. dnd-kit drag and drop with `TouchSensor` (`delay: 250`, `tolerance: 5`) and `touch-action` CSS. Filters bound to the API. Optimistic updates that roll back on error.
 **Done when:** dragging a card persists its status, touch scrolling still works on a phone, and a failed update restores the card.
 
 ### 2.5 Task dialog and subtasks UI (Lane B)
+
+**Status:** Done (Path B: dialog plus a separate subtask panel). Create, edit, delete, read-only view for viewers, inline field errors.
+
 Create and edit dialog with all task fields and a checklist editor for subtasks. Viewers see a read-only version.
 **Done when:** every field saves, viewers cannot edit, and validation errors show inline.
 
 ### 2.6 Home dashboard (Lane B)
+
+**Status:** Done. Stat cards (one sparkline), weekly chart (recharts), in-progress cards, add-task tile, loading, empty and error states, all from `GET .../tasks/stats`.
+
 Greeting, stats cards with sparklines, weekly progress chart, in-progress cards and an add-task tile, using real API data.
 **Done when:** the numbers match the board and the page has loading, empty and error states.
 
 ### 2.7 Core product check (Lane A + B)
+
+**Status:** Done 2026-11-27. The owner ran the two-account walkthrough and it passed. Found and fixed during it: the members page layout bug (W-29) and a login lockout from the default rate limits (A-25).
+
 Run the whole product as a new user: register, create a workspace, invite a second user, create and move tasks, check roles.
 **Done when:** a second person can use it without help and no role check can be bypassed from the UI or the API.
 
-## Phase 3 â€“ AI Features
+## Phase 2.5 - Hardening before deploy (added 2026-11-27)
+
+Found during the Phase 2 review. Order: 3.1 to 3.3, then H1 and H2, then the skeleton deploy (1.13), then the rest of Phase 3. A-08 (atomic task `version`) must be done before 3.11.
+
+### H1 Pre-deploy API hardening (Lane A)
+
+A-03 make register atomic or compensate on failure. A-05 prune and cap `refreshTokens`. A-06 require JWT secrets of 32 or more characters in production and remove the unused `JWT_REFRESH_SECRET`. A-07 `requireAuth` returns 401 only for token errors. A-14 map cast errors to 400 and oversized bodies to 413. A-15 `no-store` on `/health`. A-18 complete `.env.example`. Set Node 22 in `engines`.
+**Done when:** each item has a test, `pnpm test` passes, and `.env.example` lists every variable.
+
+### H2 CI and repository settings (Lane A + owner)
+
+Add `pnpm --filter @tasksight/web build` to CI. Prove a deliberate type error fails CI (C-05). Turn on branch protection for `main` (PR required, CI required) so a direct push like `6565690` is blocked (C-06).
+**Done when:** CI builds the web app, a throwaway branch with a type error is red, and a direct push to `main` is rejected.
+
+### H3 Web leftovers (Lane B)
+
+W-25 show a retry screen instead of "logged out" when `/auth/me` or `/workspaces` fails for a reason other than 401. W-02 parse the remaining responses with the shared schemas. W-23 keep or warn about unsaved subtask text.
+**Done when:** forcing a 429 or a 500 on `/auth/me` shows a retry screen, and no `as T` cast remains on API responses.
+
+## Phase 3 - AI Features
+
+All Phase 3 tasks are **Not started** unless a status line says otherwise.
 
 ### 3.1 LLM module (Lane A)
-`llm/` with a provider interface, token-bucket limiter (limits from env), retry with exponential backoff and jitter, a response cache keyed by prompt hash and model, a per-user quota, a cached-sample fallback and an `AiLog` write on every call. Model IDs come from env (`gemini-3.1-flash-lite`, `gemini-embedding-2`).
+
+**Status:** Starting (Lane A, branch `feat/api-llm-module`). Confirmed 2026-11-27 from the live model list: text `gemini-3.1-flash-lite`, fallback `gemini-3.5-flash-lite`, embeddings `gemini-embedding-001` at 768 dimensions. Free-tier limits: 15 RPM and 500 RPD for text, 100 RPM and 1,000 RPD for embeddings. Atlas runs MongoDB 8.0.39 and a Vector Search index can be created (done in 3.6). Prices live in `llm/pricing.ts` (estimates at paid-tier prices; an unknown model gives no estimate).
+`llm/` with a provider interface, token-bucket limiter (limits from env), retry with exponential backoff and jitter, a response cache keyed by prompt hash and model, a per-user quota, a cached-sample fallback and an `AiLog` write on every call. Model IDs come from env (`gemini-3.1-flash-lite`, fallback `gemini-3.5-flash-lite`, `gemini-embedding-001`).
 **Done when:** unit tests cover the limiter, retries, cache hits and the fallback, and no code outside `llm/` calls the provider SDK.
 
 ### 3.2 Usage endpoint (Lane A)
@@ -109,6 +196,8 @@ Test server-sent events from the API through the Vercel rewrite: no buffering, b
 **Done when:** the result is recorded in `architecture.md`, either as "streams through the rewrite" or as the direct-stream fallback with the bearer token.
 
 ### 3.6 Embedding pipeline (Lane A)
+
+**Status:** Not started. Atlas M0 allows 3 search indexes in total, so create one vector index only (P-01). Claim `dirty` tasks atomically and compare the embedded `version` (P-02). Index tasks only; decide D-07 first.
 `RagChunk` collection. A background worker embeds tasks and comments with `RETRIEVAL_DOCUMENT` at 768 dimensions, normalizes vectors, and processes `dirty` tasks. Backoff on 429. Create the vector index with `workspaceId` and `sourceType` filter fields.
 **Done when:** editing a task marks it dirty and the worker re-embeds it, task saves never call the model, and a forced 429 delays embedding without failing the save.
 
@@ -144,7 +233,9 @@ Streaming conversation view with clickable citation chips that open the cited ta
 Usage view with calls, tokens, estimated cost and p95 latency per feature.
 **Done when:** the numbers match the usage endpoint.
 
-## Phase 4 â€“ Deployment, Polish & Portfolio
+## Phase 4 - Deployment, Polish & Portfolio
+
+All Phase 4 tasks are **Not started**.
 
 ### 4.1 Production API build (Lane A)
 `apps/api/tsup.config.ts` with `noExternal: ["@tasksight/shared"]`, scripts `build: "tsup"` and `start: "node dist/index.js"`, Render build command `pnpm install --prod=false && pnpm --filter @tasksight/api build`, and a `.env.example` listing every variable.
