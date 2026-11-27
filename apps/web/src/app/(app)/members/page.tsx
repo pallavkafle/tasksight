@@ -141,7 +141,7 @@ export default function MembersPage() {
   const currentName = workspaces.find((w) => w.id === workspaceId)?.name;
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-4xl flex-col gap-8">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Team Members</h1>
         <p className="text-sm text-muted-foreground">
