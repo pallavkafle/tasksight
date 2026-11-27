@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { CommandBar } from "@/components/command-bar";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { LogOut, Home, KanbanSquare, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -102,7 +103,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           <ThemeToggle />
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">{children}</div>
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          {children}
+          <CommandBar />
+        </div>
 
         <nav className="flex h-16 items-center justify-around border-t bg-card md:hidden pb-safe">
           {NAV_ITEMS.map((item) => {
