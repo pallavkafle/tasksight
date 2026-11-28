@@ -237,6 +237,38 @@ describe("PATCH /workspaces/:id/tasks/:taskId — update contract", () => {
     expect(r2.body.task.version).toBe(2);
   });
 
+  it("increments version atomically for concurrent updates", async () => {
+    const { token, wsId } = await ownerAndWs();
+    const create = await createTask(token, wsId, { title: "concurrent" });
+    const taskId = create.body.task.id;
+
+    const updates = await Promise.all([
+      request(app)
+        .patch(`/workspaces/${wsId}/tasks/${taskId}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ status: "in_progress" }),
+      request(app)
+        .patch(`/workspaces/${wsId}/tasks/${taskId}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ priority: "high" }),
+    ]);
+
+    expect(updates.map(({ status }) => status)).toEqual([200, 200]);
+    expect(updates.map(({ body }) => body.task.version).sort()).toEqual([1, 2]);
+
+    const final = await request(app)
+      .get(`/workspaces/${wsId}/tasks`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(final.body.items).toContainEqual(
+      expect.objectContaining({
+        id: taskId,
+        version: 2,
+        status: "in_progress",
+        priority: "high",
+      }),
+    );
+  });
+
   it("stays dirty on non-content updates until the worker re-embeds", async () => {
     const { token, wsId } = await ownerAndWs();
     const create = await createTask(token, wsId, { title: "x" });
