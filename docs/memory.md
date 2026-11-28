@@ -10,14 +10,15 @@
 
 ## Current state (2026-11-28)
 
-- Phase 1 and Phase 2 of `task.md` are done, except 1.13 (skeleton deploy, not started). Nothing is deployed.
+- Phase 1 and Phase 2 of `task.md` are done, except 1.13 (deployment in progress). Nothing is deployed yet.
 - Phase 3.2 usage endpoint is merged; full validation passed.
-- H1 and A-08 implementation and full validation are complete on `fix/api-hardening`; H2 adds the web build to CI and the local typecheck probe passed. The combined PR is not yet open.
+- H1, A-08 and H2 are merged to `main`. C-05 was proven on PR #48: an intentional TS2322 made the Actions typecheck fail; the temporary branch and PR were later removed.
+- C-06: the owner reports that branch protection is enabled; verify the saved `main` rule requires a PR and the CI check before closing the issue.
+- Current branch `feat/deployment-skeleton`: API tsup bundle, Render manifest, Vercel config and proxy request logging are implemented. The API build, typecheck, lint, formatting, all 135 tests and web production build passed locally. The branch is not yet merged or deployed.
 - Phase 2 on `main`: workspaces with 3 roles (#13), task API with filters and cursor pagination (#15), CI with tests and a MongoDB binary cache (#16, #20), app shell (#17), auth rate limits and auto-workspace (#18), Kanban (#19), web fixes (#21), task dialog and members page (#22), dashboard (#23), id validation and assignee membership (#24), then my own PRs: card-drop fix and workspace switcher, members management, task dialog with subtask panel, board filters, auth resilience (wake screen), `completedAt` plus task stats, refresh race fix, dashboard on real stats, members page layout fix, rate-limit fix. Use `git log` for hashes.
 - Records: `docs/issues.md` is the issues and errors ledger. `docs/improvements.md` is the ideas stash (nothing there is built unless I ask).
-- Not yet independently reviewed: #24, my PRs above, and this docs PR. Commit `6565690` was pushed to `main` by mistake.
-- Next: open the combined H1/A-08/H2 PR; complete the CI-failure proof and branch protection, merge, then do the skeleton deployment before continuing Phase 3.
-- Manual items I still owe: Gemini API key and model IDs, Render and Vercel connected to GitHub, Atlas MongoDB version and vector index check, branch protection on `main`.
+- Next: finish and merge the deployment skeleton, connect Render and Vercel, configure production environment values privately, deploy, and verify the auth flow and proxy hops before continuing Phase 3.
+- Manual items: Gemini API key/model check, Render and Vercel setup, Atlas MongoDB version and vector index check, and final verification of the saved `main` branch rule.
 
 ## Key decisions
 
@@ -78,7 +79,7 @@
 ## Open items
 
 - Gemini: create the API key (env only) and check model IDs and limits in AI Studio before Phase 3.
-- Accounts: connect Render and Vercel to GitHub before the first deploy.
+- Accounts: connect Render and Vercel to GitHub and configure production environment values privately before the first deploy.
 - Verify at the first deploy: SSE through the Vercel rewrite; `req.ip` and `TRUST_PROXY_HOPS` behind Vercel and Render (A-02); whether Gemma handles structured JSON as well as Flash Lite.
 - Decide D-07 before task 3.6: what "restricted tasks" and comments mean (default: workspace-level filter, tasks only).
 - Everything else is in `docs/issues.md`.

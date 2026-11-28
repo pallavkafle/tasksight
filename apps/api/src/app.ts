@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type Request } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
@@ -19,7 +19,18 @@ export function createApp() {
 
   app.set("trust proxy", env.TRUST_PROXY_HOPS);
 
-  app.use(pinoHttp({ logger }));
+  app.use(
+    pinoHttp({
+      logger,
+      customProps: (req) => {
+        const expressReq = req as Request;
+        return {
+          requestIp: expressReq.ip,
+          xForwardedFor: req.headers["x-forwarded-for"] ?? null,
+        };
+      },
+    }),
+  );
   app.use(helmet());
   app.use(
     cors({

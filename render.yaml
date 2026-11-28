@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: tasksight-api
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm --filter @tasksight/api build
+    startCommand: pnpm --filter @tasksight/api start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGIN
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: TRUST_PROXY_HOPS
+        value: "1"

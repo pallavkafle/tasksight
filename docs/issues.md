@@ -70,10 +70,10 @@ Last updated 2026-11-27. IDs never change. Severity: H high, M medium, L low. "C
 |---|---|---|---|
 | C-01 | CI never builds the web app | M | Closed (H2; web build added to CI) |
 | C-02 | MongoDB binary cache never saved | M | Closed |
-| C-03 | No API build, `render.yaml` or `vercel.json` | M | Open (1.13, 4.1) |
+| C-03 | No API build, `render.yaml` or `vercel.json` | M | In progress (build and manifests implemented locally; live deployment pending) |
 | C-04 | `cn` package | Info | Closed (official shadcn package) |
-| C-05 | Actions pinned to tags; "deliberate type error fails CI" not proven | L | Open (H2) |
-| C-06 | Branch protection on `main` not confirmed | M | Open (owner, H2) |
+| C-05 | Actions pinned to tags; "deliberate type error fails CI" not proven | L | Closed for CI-failure proof (PR #48's intentional TS2322 failed the typecheck; action refs remain tag-based) |
+| C-06 | Branch protection on `main` not confirmed | M | Open (owner reports enabled; verify saved PR requirement and CI check) |
 
 ## Web
 
