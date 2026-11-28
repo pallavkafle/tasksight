@@ -106,6 +106,7 @@ Paths are the API's own. The browser uses the same paths behind `/api`.
 | `PATCH /workspaces/:workspaceId/tasks/:taskId` | partial + Bearer, member+ | 200 `{task}` | 400, 401, 403, 404 |
 | `DELETE /workspaces/:workspaceId/tasks/:taskId` | Bearer, member+ | 204 | 401, 403, 404 |
 | `GET /workspaces/:workspaceId/tasks/stats` | Bearer, viewer+; query: `tz` (IANA name, default `UTC`) | 200 `{counts:{todo,in_progress,done}, total, completedByDay:[{date,count}] x7, completedLast7Days}` | 400, 401, 403, 404 |
+| `POST /ai/parse-task` | `{text (1 to 500 chars), tz? (IANA zone, default UTC), workspaceId?}` + Bearer | 200 `{task:{title,priority,dueDate (ISO at 12:00 UTC or null),labels[]}, fromSample}` | 400, 401, 403, 429, 500 |
 
 - **Task stats:** `GET /workspaces/:workspaceId/tasks/stats?tz=Area/City` returns counts by status, the total, and the number of tasks completed on each of the last 7 calendar days in the given time zone (zero-filled, oldest first), plus their sum. The route is registered before `/tasks/:taskId`. An invalid `tz` returns 400.
 - **Error shape:** `{ error: { code, message, details? } }`, with `details` as `Array<{ path: string, message: string }>` or omitted.
@@ -116,7 +117,7 @@ Paths are the API's own. The browser uses the same paths behind `/api`.
 - **Roles:** `owner > member > viewer`. `requireRole(min)` allows `role >= min`. The last owner cannot demote themselves or leave (returns `FORBIDDEN`).
 - **Task shape:** `{ id, workspaceId, title, description, status, priority, dueDate, labels[], assigneeId, subtasks[], createdBy, version, embeddingStatus, completedAt, createdAt, updatedAt }`. `status` ∈ `todo | in_progress | done`; `priority` ∈ `low | medium | high`; `dueDate` and `assigneeId` nullable; `subtasks` capped at 30. `completedAt` is an ISO string or null. It is set when a task is created as `done` or moves to `done`, cleared when it leaves `done`, and stays null for tasks that were already done before the field existed.
 - **Task pagination:** cursor is base64url JSON `{v, i}` where `v` is the sort value (createdAt or dueDate with null-sentinel) and `i` is the `_id` tiebreak. Sort is 2-key (`sortVal`, `_id`) so pages never duplicate or skip. `null` dueDate sorts last in both directions.
-- Later endpoints: tasks (filters, sorting, cursor pagination), `POST /ai/parse-task`, `/ai/subtasks`, `/ai/ask` (streaming), `/ai/agent/propose`, `/ai/agent/approve`, and an AI usage summary.
+- Later endpoints: tasks (filters, sorting, cursor pagination), `/ai/subtasks`, `/ai/ask` (streaming), `/ai/agent/propose`, `/ai/agent/approve`, and an AI usage summary.
 
 ## 6. Request pipeline (Express 5)
 Order: pino-http, helmet, cors, `/health`, rate limiter, `express.json({ limit: "100kb" })`, routes, 404 handler, error handler. The limiter sits before body parsing so throttled requests stay cheap. `/auth/*` and `/ai/*` get stricter limiters. Defaults: 600 requests per 15 minutes per IP overall and 300 for `/auth/*`; login and register share a stricter limiter that counts only failed attempts (10 per 15 minutes). `RATE_LIMIT_ENABLED=false` turns every limiter off (local development only). The default in-memory limiter store resets when Render spins down, which is acceptable for one instance.
@@ -133,7 +134,7 @@ Validation: a Zod middleware parses `params`, `query` and `body` and stores the 
 | Task | workspaceId, title, description, status, priority, dueDate, labels[], assigneeId, subtasks[] (`{title, done}`, max 30), createdBy, version, embeddingStatus (`clean`, `dirty`), completedAt, timestamps |
 | RagChunk | workspaceId, sourceType, sourceId, text, embedding (768 floats), updatedAt |
 | AgentProposal | workspaceId, createdBy, actions[], targetVersions, expiresAt, idempotencyKey, status, snapshot |
-| AiLog | userId, workspaceId, feature, model, tokensIn, tokensOut, latencyMs, estCost, success, cacheHit |
+| AiLog | userId, workspaceId, feature, model, tokensIn, tokensOut, latencyMs, estCost (null when the model has no price), success, cacheHit, fromSample, errorCode. Never stores prompt or response text. workspaceId is nullable |
 
 Indexes: `{workspaceId, status}`, `{workspaceId, dueDate}`, `{workspaceId, completedAt}`, `User.refreshTokens.tokenHash`, `User.refreshTokens.previousTokenHash`, and one vector index on `RagChunk.embedding` with `workspaceId` and `sourceType` as filter fields. MongoDB has no row-level security, so isolation is enforced in code and inside every `$vectorSearch` filter. Subtasks are embedded and capped to avoid unbounded arrays and `$lookup`.
 
@@ -145,7 +146,7 @@ Atlas M0 limits that shape the design: 512 MB storage, 100 operations per second
 |---|---|
 | Quick-add | Model returns JSON validated with Zod, one retry, confirm chip. On rate limit or parse failure the UI opens a pre-filled manual form |
 | Subtasks | Same pattern, array output saved as embedded checklist items |
-| Ask Sathi | Vector search with workspace and role pre-filter, cited answer, every cited ID validated |
+| Insight | Vector search with workspace and role pre-filter, cited answer, every cited ID validated |
 | Agent | Proposals only (section 9) |
 | Observability | Each call writes an `AiLog` row. The dashboard shows p95 latency and cost per query |
 
@@ -199,7 +200,7 @@ Live runs use free-tier quota and vary between runs, so PRs replay recorded resp
 - mongodb-memory-server cannot run `$vectorSearch`. Vector queries sit behind a repository interface; CI uses a fake, and real retrieval is tested locally against the dev Atlas cluster or `mongodb-atlas-local` (indexing lags by several seconds after seeding).
 
 ## 12. Deployment
-- **API (Render free tier):** 512 MB RAM, 0.1 CPU, sleeps after 15 minutes idle, about a minute to wake, 750 free hours per month. Build `pnpm install --prod=false && pnpm --filter @tasksight/api build`; start `node dist/index.js`. Env: `NODE_ENV`, `PORT`, `APP_VERSION`, `CORS_ORIGIN`, `TRUST_PROXY_HOPS`, `MONGODB_URI`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `REFRESH_TOKEN_TTL_DAYS`, `REFRESH_GRACE_SECONDS`, rate-limit values, LLM keys and model IDs.
+- **API (Render free tier):** 512 MB RAM, 0.1 CPU, sleeps after 15 minutes idle, about a minute to wake, 750 free hours per month. Build `pnpm install --prod=false && pnpm --filter @tasksight/api build`; start `node dist/index.js`. Env: `NODE_ENV`, `PORT`, `APP_VERSION`, `CORS_ORIGIN`, `TRUST_PROXY_HOPS`, `MONGODB_URI`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `REFRESH_TOKEN_TTL_DAYS`, `REFRESH_GRACE_SECONDS`, rate-limit values (including `AI_RATE_LIMIT_MAX` and `AI_RATE_LIMIT_WINDOW_MS` for `/ai/*`), the LLM key, model IDs, limits and user quota (full list in `apps/api/.env.example`).
 - **Web (Vercel):** `API_ORIGIN` env var for the rewrite, and a correctly spelled `vercel.json`.
 - **Atlas:** allow `0.0.0.0/0` only at deploy time, with a strong password. An idle M0 cluster can pause, so confirm it is active before a demo.
 
@@ -213,3 +214,5 @@ Live runs use free-tier quota and vary between runs, so PRs replay recorded resp
 - Not built yet (the sections above describe the target): the tsup production build, Render and Vercel config, `x-origin-secret`, `/ai/*` routes, the `llm/` module, `RagChunk`, `AiLog`, `AgentProposal`.
 - Password verification does not yet dispatch on the hash prefix.
 - Known gaps are tracked in `docs/issues.md`; ideas that are not built are in `docs/improvements.md`.
+- LLM module (`apps/api/src/llm`, task 3.1): every model call goes through `getLlm()`. Order: response cache, per-user daily quota (real calls counted from `AiLog` since midnight US Pacific), per-model limiter (per-minute bucket and a daily count), main model then fallback model, then a saved sample answer. A sample is returned with `fromSample: true` instead of an error. It does not stream yet. Prices are in `llm/pricing.ts`; a model without a price gives `estCost: null`.
+- Models: text `gemini-3.1-flash-lite`, fallback `gemini-3.5-flash-lite`, embeddings `gemini-embedding-001` at 768 dimensions (vectors normalized in code). The API starts without `GEMINI_API_KEY`; AI calls then return the sample.

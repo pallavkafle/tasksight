@@ -6,14 +6,14 @@
 - TaskSight is my rebuild of an old deployed expense tracker (which stays live as the "before" version) to practice modern full-stack engineering and AI integration.
 - Repo: `C:\D_Drive_Backup\PROJECTS\tasksight`, GitHub `pallavkafle/tasksight`. Windows, VS Code, PowerShell. Name: TaskSight (renamed 2026-11-20 from TaskSathi after checking GitHub, npm and domains).
 - Time budget: about 10 to 12 hours a week.
-- Lane A (API, shared, CI) and Lane B (web) are AI assistants. When one is out of quota another covers it (rule.md section 1).
+- Work is split into Lane A (API, shared, CI) and Lane B (web). When one lane is blocked I cover it (rule.md section 1).
 
 ## Current state (2026-11-27)
 
 - Phase 1 and Phase 2 of `task.md` are done, except 1.13 (skeleton deploy, not started). Nothing is deployed.
-- Phase 2 on `main`: workspaces with 3 roles (#13), task API with filters and cursor pagination (#15), CI with tests and a MongoDB binary cache (#16, #20), app shell (#17), auth rate limits and auto-workspace (#18), Kanban (#19), web fixes (#21), task dialog and members page (#22), dashboard (#23), id validation and assignee membership (#24), then the work done by Claude: card-drop fix and workspace switcher, members management, task dialog with subtask panel, board filters, auth resilience (wake screen), `completedAt` plus task stats, refresh race fix, dashboard on real stats, members page layout fix, rate-limit fix. Use `git log` for hashes.
+- Phase 2 on `main`: workspaces with 3 roles (#13), task API with filters and cursor pagination (#15), CI with tests and a MongoDB binary cache (#16, #20), app shell (#17), auth rate limits and auto-workspace (#18), Kanban (#19), web fixes (#21), task dialog and members page (#22), dashboard (#23), id validation and assignee membership (#24), then my own PRs: card-drop fix and workspace switcher, members management, task dialog with subtask panel, board filters, auth resilience (wake screen), `completedAt` plus task stats, refresh race fix, dashboard on real stats, members page layout fix, rate-limit fix. Use `git log` for hashes.
 - Records: `docs/issues.md` is the issues and errors ledger. `docs/improvements.md` is the ideas stash (nothing there is built unless I ask).
-- Not yet independently reviewed: #24, the Claude PRs above, and this docs PR. Commit `6565690` was pushed to `main` by mistake.
+- Not yet independently reviewed: #24, my PRs above, and this docs PR. Commit `6565690` was pushed to `main` by mistake.
 - Next: hardening tasks H1 and H2 (task.md Phase 2.5), then Phase 3 starting with 3.1, with the skeleton deploy (1.13) after 3.3.
 - Manual items I still owe: Gemini API key and model IDs, Render and Vercel connected to GitHub, Atlas MongoDB version and vector index check, branch protection on `main`.
 
@@ -41,7 +41,7 @@
 | Aggregate pipeline for task list and stats, `.find()` for task CRUD | `sanitizeFilter: true` breaks `$gte/$lte/$ifNull/$or`; aggregate bypasses it and does not cast ids |
 | Cursor-based pagination with base64url JSON | Offset pagination duplicates or skips on write |
 | Network errors, 429 and 5xx do not log the user out; only a rejected refresh does (D-23) | A cold or busy API must not end a valid session |
-| Nav is Dashboard, Board, Members only | No Project model; Ask Sathi appears when built |
+| Nav is Dashboard, Board, Members only | No Project model; Insight appears when built |
 | Task dialog is "Path B": dialog plus a separate subtask panel | Subtasks get their own component for the later AI breakdown |
 | recharts for the weekly chart, hand-written SVG for sparklines | Chart library accepted after the fact (D-18) |
 | Workspace choice kept in `localStorage` (try/catch) | A user with several workspaces keeps their place |
@@ -68,7 +68,7 @@
 | A file called `tash list` appeared in the repo | The git pager's save key created it. Use `git --no-pager` |
 | Docs showed odd characters instead of dashes and garbled Devanagari | They were double-encoded. Fixed 2026-11-27. Read files with `-Encoding UTF8` |
 | Commit `6565690` went straight to `main` | Always use a branch and PR; turn on branch protection |
-| Lane summaries did not match git (PR #22 claimed a dialog that arrived later) | Check every claim with a git command |
+| A PR description did not match the code (PR #22 claimed a dialog that arrived later) | Check every claim with a git command |
 | Local login lockout after a few test logins | The global limiter ignored `RATE_LIMIT_ENABLED`. Fixed |
 | Members page cards were cut off | `h-full` on the page plus `overflow-hidden` on `Card`. Let the page grow |
 | Atlas Vector Search cannot be tested in mongodb-memory-server | Keep it behind a repository interface and use a fake in CI |

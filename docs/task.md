@@ -175,7 +175,7 @@ All Phase 3 tasks are **Not started** unless a status line says otherwise.
 
 ### 3.1 LLM module (Lane A)
 
-**Status:** Starting (Lane A, branch `feat/api-llm-module`). Confirmed 2026-11-27 from the live model list: text `gemini-3.1-flash-lite`, fallback `gemini-3.5-flash-lite`, embeddings `gemini-embedding-001` at 768 dimensions. Free-tier limits: 15 RPM and 500 RPD for text, 100 RPM and 1,000 RPD for embeddings. Atlas runs MongoDB 8.0.39 and a Vector Search index can be created (done in 3.6). Prices live in `llm/pricing.ts` (estimates at paid-tier prices; an unknown model gives no estimate).
+**Status:** Done (#42). Confirmed 2026-11-27 from the live model list: text `gemini-3.1-flash-lite`, fallback `gemini-3.5-flash-lite`, embeddings `gemini-embedding-001` at 768 dimensions. Free-tier limits: 15 RPM and 500 RPD for text, 100 RPM and 1,000 RPD for embeddings. Atlas runs MongoDB 8.0.39 and a Vector Search index can be created (done in 3.6). Prices live in `llm/pricing.ts` (estimates at paid-tier prices; an unknown model gives no estimate; the table stays empty until I copy the prices from the official Google price page).
 `llm/` with a provider interface, token-bucket limiter (limits from env), retry with exponential backoff and jitter, a response cache keyed by prompt hash and model, a per-user quota, a cached-sample fallback and an `AiLog` write on every call. Model IDs come from env (`gemini-3.1-flash-lite`, fallback `gemini-3.5-flash-lite`, `gemini-embedding-001`).
 **Done when:** unit tests cover the limiter, retries, cache hits and the fallback, and no code outside `llm/` calls the provider SDK.
 
@@ -184,6 +184,8 @@ All Phase 3 tasks are **Not started** unless a status line says otherwise.
 **Done when:** the endpoint returns correct numbers for seeded log rows.
 
 ### 3.3 Quick-add API (Lane A)
+
+**Status:** Done (#44). `POST /ai/parse-task` with a server-side date, delimited input, Zod-validated output with one retry, and the saved sample when the model is unavailable. The web command bar calls it (#39, #43) but does not yet send `workspaceId` (A-27).
 `POST /ai/parse-task` returns JSON validated by a Zod schema (title, due date, priority, labels) with one retry on invalid output. Task text is wrapped in delimiters in the prompt.
 **Done when:** "submit report Friday, high priority" produces the correct task, invalid model output is retried once and then returns a clear error, and an injection attempt in the input does not change the output schema.
 
@@ -201,11 +203,11 @@ Test server-sent events from the API through the Vercel rewrite: no buffering, b
 `RagChunk` collection. A background worker embeds tasks and comments with `RETRIEVAL_DOCUMENT` at 768 dimensions, normalizes vectors, and processes `dirty` tasks. Backoff on 429. Create the vector index with `workspaceId` and `sourceType` filter fields.
 **Done when:** editing a task marks it dirty and the worker re-embeds it, task saves never call the model, and a forced 429 delays embedding without failing the save.
 
-### 3.7 Ask Sathi API (Lane A)
+### 3.7 Insight API (Lane A)
 `POST /ai/ask` embeds the question with `RETRIEVAL_QUERY`, runs `$vectorSearch` with the workspace and role pre-filter, builds the prompt with delimiters, streams the answer and returns cited task IDs. Every cited ID is checked against the database. Vector queries sit behind a repository interface.
 **Done when:** answers cite real tasks, a made-up ID is dropped, restricted tasks never appear in the context, and a user cannot retrieve another workspace's tasks.
 
-### 3.8 Ask Sathi UI (Lane B)
+### 3.8 Insight UI (Lane B)
 Streaming conversation view with clickable citation chips that open the cited task.
 **Done when:** the answer streams, citations open the right task, and an exhausted quota shows a notice with a cached sample answer.
 
@@ -251,7 +253,7 @@ Add `x-origin-secret` (Vercel adds it, the API rejects requests without it). Con
 
 ### 4.4 Seed data and demo workspace (Lane A)
 A script that creates a synthetic workspace with realistic tasks and pre-embedded chunks, and cached sample answers for the quota-exhausted case.
-**Done when:** a fresh visitor can use quick-add and Ask Sathi, and with the LLM quota deliberately exhausted the demo still returns cached answers.
+**Done when:** a fresh visitor can use quick-add and Insight, and with the LLM quota deliberately exhausted the demo still returns cached answers.
 
 ### 4.5 PWA manifest (Lane B)
 Web manifest, icons and theme colors. No service worker caching.
@@ -266,5 +268,5 @@ README with the description, live link, screenshots or GIF, architecture diagram
 **Done when:** someone who has never seen the project can understand it and run it from the README.
 
 ### 4.8 Demo video and final verification (Manual)
-Record the 2-minute video: command bar, a task created, Ask Sathi with citations, the eval table. Run the final checklist on the live site.
+Record the 2-minute video: command bar, a task created, Insight with citations, the eval table. Run the final checklist on the live site.
 **Done when:** CI is green on `main`, no secrets are in the repo history, the live demo works end to end on desktop and phone, and the video and README links are published.
