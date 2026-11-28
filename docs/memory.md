@@ -8,13 +8,14 @@
 - Time budget: about 10 to 12 hours a week.
 - Work is split into Lane A (API, shared, CI) and Lane B (web). When one lane is blocked I cover it (rule.md section 1).
 
-## Current state (2026-11-27)
+## Current state (2026-11-28)
 
 - Phase 1 and Phase 2 of `task.md` are done, except 1.13 (skeleton deploy, not started). Nothing is deployed.
+- Phase 3.2 usage endpoint is implemented on `feat/api-usage-endpoint`; full validation passed and changes are awaiting review.
 - Phase 2 on `main`: workspaces with 3 roles (#13), task API with filters and cursor pagination (#15), CI with tests and a MongoDB binary cache (#16, #20), app shell (#17), auth rate limits and auto-workspace (#18), Kanban (#19), web fixes (#21), task dialog and members page (#22), dashboard (#23), id validation and assignee membership (#24), then my own PRs: card-drop fix and workspace switcher, members management, task dialog with subtask panel, board filters, auth resilience (wake screen), `completedAt` plus task stats, refresh race fix, dashboard on real stats, members page layout fix, rate-limit fix. Use `git log` for hashes.
 - Records: `docs/issues.md` is the issues and errors ledger. `docs/improvements.md` is the ideas stash (nothing there is built unless I ask).
 - Not yet independently reviewed: #24, my PRs above, and this docs PR. Commit `6565690` was pushed to `main` by mistake.
-- Next: hardening tasks H1 and H2 (task.md Phase 2.5), then Phase 3 starting with 3.1, with the skeleton deploy (1.13) after 3.3.
+- Next: H1 API hardening (task.md Phase 2.5), then H2 CI and skeleton deployment before the remaining Phase 3 work.
 - Manual items I still owe: Gemini API key and model IDs, Render and Vercel connected to GitHub, Atlas MongoDB version and vector index check, branch protection on `main`.
 
 ## Key decisions

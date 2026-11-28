@@ -57,6 +57,13 @@ export class LlmService {
     this.now = opts.now ?? Date.now;
   }
 
+  async getUserQuota(userId: string): Promise<{ limit: number; usedToday: number }> {
+    return {
+      limit: this.opts.userDailyQuota,
+      usedToday: await this.countUserCalls(userId),
+    };
+  }
+
   async generate(ctx: LlmContext, req: GenerateRequest): Promise<LlmGenerateOutput> {
     const started = this.now();
     const primary = req.model ?? this.opts.textModel;
