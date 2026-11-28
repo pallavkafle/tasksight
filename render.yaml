@@ -3,10 +3,12 @@ services:
     name: tasksight-api
     runtime: node
     plan: free
-    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm --filter @tasksight/api build
-    startCommand: pnpm --filter @tasksight/api start
+    buildCommand: corepack pnpm install --frozen-lockfile --prod=false && corepack pnpm --filter @tasksight/api build
+    startCommand: corepack pnpm --filter @tasksight/api start
     healthCheckPath: /health
     envVars:
+      - key: NODE_VERSION
+        value: "22.16.0"
       - key: NODE_ENV
         value: production
       - key: CORS_ORIGIN
