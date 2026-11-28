@@ -11,7 +11,16 @@ import { fetchApi } from "@/lib/api";
 import { TaskDialog } from "@/components/task-dialog";
 import { Task } from "@tasksight/shared";
 
-type ParsedTask = { title: string; priority: "low" | "medium" | "high"; dueDate: string | null };
+// Frozen 3.3 Contract
+type ParsedTaskResponse = {
+  task: {
+    title: string;
+    priority: "low" | "medium" | "high";
+    dueDate: string | null;
+    labels: string[];
+  };
+  fromSample: boolean;
+};
 
 export function CommandBar() {
   const { workspaceId } = useAuth();
@@ -19,11 +28,10 @@ export function CommandBar() {
   const [value, setValue] = useState("");
   const [isParsing, setIsParsing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [confirmChip, setConfirmChip] = useState<ParsedTask | null>(null);
+  const [confirmChip, setConfirmChip] = useState<ParsedTaskResponse | null>(null);
   const [fallbackTask, setFallbackTask] = useState<Task | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Ctrl/Cmd + K keyboard shortcut
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -41,14 +49,16 @@ export function CommandBar() {
 
     setIsParsing(true);
     try {
-      // 1. Call the real AI endpoint
-      const parsed = await fetchApi<ParsedTask>("/ai/parse-task", {
+      const parsed = await fetchApi<ParsedTaskResponse>("/ai/parse-task", {
         method: "POST",
-        body: JSON.stringify({ text: value }),
+        body: JSON.stringify({
+          text: value,
+          tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          workspaceId: workspaceId,
+        }),
       });
       setConfirmChip(parsed);
     } catch {
-      // 2. Fallback: If AI fails (404, 429, parse error), open manual dialog with prefilled title
       const fakeTask = {
         title: value,
         description: "",
@@ -73,17 +83,18 @@ export function CommandBar() {
       await fetchApi(`/workspaces/${workspaceId}/tasks`, {
         method: "POST",
         body: JSON.stringify({
-          title: confirmChip.title,
-          priority: confirmChip.priority,
-          dueDate: confirmChip.dueDate ? `${confirmChip.dueDate}T12:00:00.000Z` : null,
+          title: confirmChip.task.title,
+          priority: confirmChip.task.priority,
+          dueDate: confirmChip.task.dueDate, // Passed as-is (already ISO)
+          labels: confirmChip.task.labels,
           status: "todo",
         }),
       });
       queryClient.invalidateQueries({ queryKey: ["tasks", workspaceId] });
       setConfirmChip(null);
       setValue("");
-    } catch {
-      console.error("Failed to save");
+    } catch (err) {
+      console.error("Failed to save task", err);
     } finally {
       setIsSaving(false);
     }
@@ -104,19 +115,38 @@ export function CommandBar() {
             <div className="flex items-center gap-3">
               <Sparkles className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm font-medium">{confirmChip.title}</p>
-                <div className="flex gap-2 mt-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium">{confirmChip.task.title}</p>
+                  {confirmChip.fromSample && (
+                    <Badge
+                      variant="secondary"
+                      className="text-[9px] px-1 h-4 uppercase text-muted-foreground"
+                    >
+                      Sample
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex gap-2 mt-1 flex-wrap">
                   <Badge
                     variant="outline"
                     className="text-[10px] uppercase text-amber-500 border-amber-500/30"
                   >
-                    {confirmChip.priority}
+                    {confirmChip.task.priority}
                   </Badge>
-                  {confirmChip.dueDate && (
+                  {confirmChip.task.dueDate && (
                     <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                      {confirmChip.dueDate}
+                      {confirmChip.task.dueDate.split("T")[0]}
                     </Badge>
                   )}
+                  {confirmChip.task.labels.map((l) => (
+                    <Badge
+                      key={l}
+                      variant="outline"
+                      className="text-[10px] border-primary/30 text-primary"
+                    >
+                      {l}
+                    </Badge>
+                  ))}
                 </div>
               </div>
             </div>
