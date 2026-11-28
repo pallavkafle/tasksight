@@ -3,8 +3,8 @@ services:
     name: tasksight-api
     runtime: node
     plan: free
-    buildCommand: corepack pnpm install --frozen-lockfile --prod=false && corepack pnpm --filter @tasksight/api build
-    startCommand: corepack pnpm --filter @tasksight/api start
+    buildCommand: npx --yes pnpm@12.18.0 install --frozen-lockfile --prod=false && npx --yes pnpm@12.18.0 --filter @tasksight/api build
+    startCommand: node apps/api/dist/server.js
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
