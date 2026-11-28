@@ -45,6 +45,8 @@ const envSchema = z.object({
   LLM_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
   LLM_CACHE_MAX_ENTRIES: z.coerce.number().int().positive().default(500),
   LLM_USER_DAILY_QUOTA: z.coerce.number().int().positive().default(30),
+  AI_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(30),
+  AI_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(600000),
 });
 
 const parsed = envSchema.safeParse(process.env);

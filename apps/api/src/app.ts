@@ -12,6 +12,7 @@ import { healthRouter } from "./routes/health";
 import { authRouter } from "./routes/auth";
 import { workspaceRouter } from "./routes/workspaces";
 import { taskRouter } from "./routes/tasks";
+import { aiRouter } from "./routes/ai";
 
 export function createApp() {
   const app = express();
@@ -79,6 +80,19 @@ export function createApp() {
   app.use(authRouter);
   app.use(workspaceRouter);
   app.use(taskRouter);
+
+  if (env.RATE_LIMIT_ENABLED === "true") {
+    const aiLimiter = rateLimit({
+      windowMs: env.AI_RATE_LIMIT_WINDOW_MS,
+      limit: env.AI_RATE_LIMIT_MAX,
+      standardHeaders: "draft-7",
+      legacyHeaders: false,
+      handler: (_req, _res, next) =>
+        next(new AppError("RATE_LIMITED", "Too many AI requests, try again later")),
+    });
+    app.use("/ai", aiLimiter);
+  }
+  app.use(aiRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
