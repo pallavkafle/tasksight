@@ -6,6 +6,7 @@ import type {
 } from "@tasksight/shared";
 import { env } from "../../config/env";
 import { AppError } from "../../errors/AppError";
+import { logger } from "../../logger";
 import { User, type UserDoc } from "../../models/User";
 import { Workspace } from "../../models/Workspace";
 import { WorkspaceMember } from "../../models/WorkspaceMember";
@@ -22,8 +23,37 @@ export interface AuthResult {
   refreshCookie: RefreshCookie;
 }
 
+const MAX_REFRESH_TOKENS = 10;
+
 function toUser(doc: UserDoc): UserResponse {
   return { id: doc.id, name: doc.name, email: doc.email };
+}
+
+function activeRefreshTokens(tokens: UserDoc["refreshTokens"], now: Date) {
+  return tokens
+    .filter((token) => token.expiresAt.getTime() > now.getTime())
+    .map((token) => ({
+      tokenHash: token.tokenHash,
+      familyId: token.familyId,
+      expiresAt: token.expiresAt,
+      previousTokenHash: token.previousTokenHash ?? null,
+      previousUsedAt: token.previousUsedAt ?? null,
+    }))
+    .slice(-MAX_REFRESH_TOKENS);
+}
+
+async function rollbackRegistration(userId: string): Promise<void> {
+  const results = await Promise.allSettled([
+    WorkspaceMember.deleteMany({ userId }),
+    Workspace.deleteMany({ ownerId: userId }),
+    User.deleteOne({ _id: userId }),
+  ]);
+
+  for (const result of results) {
+    if (result.status === "rejected") {
+      logger.error({ err: result.reason, userId }, "Failed to roll back registration");
+    }
+  }
 }
 
 export async function register(input: RegisterInput): Promise<AuthResult> {
@@ -56,15 +86,19 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
     throw err;
   }
 
-  // Every new user gets a personal workspace so their UI has somewhere to land.
-  const workspace = await Workspace.create({ name: "My Workspace", ownerId: doc.id });
-  await WorkspaceMember.create({ workspaceId: workspace._id, userId: doc.id, role: "owner" });
+  try {
+    const workspace = await Workspace.create({ name: "My Workspace", ownerId: doc.id });
+    await WorkspaceMember.create({ workspaceId: workspace._id, userId: doc.id, role: "owner" });
 
-  const accessToken = await signAccessToken(doc.id);
-  return {
-    body: { accessToken, user: toUser(doc) },
-    refreshCookie: { value: pair.raw, expiresAt: pair.expiresAt },
-  };
+    const accessToken = await signAccessToken(doc.id);
+    return {
+      body: { accessToken, user: toUser(doc) },
+      refreshCookie: { value: pair.raw, expiresAt: pair.expiresAt },
+    };
+  } catch (err) {
+    await rollbackRegistration(doc.id);
+    throw err;
+  }
 }
 
 export async function login(input: LoginInput): Promise<AuthResult> {
@@ -75,8 +109,9 @@ export async function login(input: LoginInput): Promise<AuthResult> {
   if (!ok) throw new AppError("UNAUTHORIZED", "Invalid credentials");
 
   const pair = generateRefreshToken();
+  const now = new Date();
   const nextTokens = [
-    ...doc.refreshTokens,
+    ...activeRefreshTokens(doc.refreshTokens, now),
     {
       tokenHash: pair.hash,
       familyId: pair.familyId,
@@ -84,7 +119,7 @@ export async function login(input: LoginInput): Promise<AuthResult> {
       previousTokenHash: null,
       previousUsedAt: null,
     },
-  ];
+  ].slice(-MAX_REFRESH_TOKENS);
   doc.set("refreshTokens", nextTokens);
   await doc.save();
 
@@ -120,24 +155,13 @@ async function refreshOnce(rawFromCookie: string): Promise<AuthResult> {
   const current = doc.refreshTokens.find((t) => t.tokenHash === hash);
   if (current) {
     if (current.expiresAt.getTime() <= now.getTime()) {
-      doc.set(
-        "refreshTokens",
-        doc.refreshTokens.filter((t) => t.tokenHash !== hash),
-      );
+      doc.set("refreshTokens", activeRefreshTokens(doc.refreshTokens, now));
       await doc.save();
       throw new AppError("UNAUTHORIZED", "Refresh token expired");
     }
     const pair = generateRefreshToken();
     const nextTokens = [
-      ...doc.refreshTokens
-        .filter((t) => t.tokenHash !== hash)
-        .map((t) => ({
-          tokenHash: t.tokenHash,
-          familyId: t.familyId,
-          expiresAt: t.expiresAt,
-          previousTokenHash: t.previousTokenHash ?? null,
-          previousUsedAt: t.previousUsedAt ?? null,
-        })),
+      ...activeRefreshTokens(doc.refreshTokens, now).filter((t) => t.tokenHash !== hash),
       {
         tokenHash: pair.hash,
         familyId: current.familyId,
@@ -145,7 +169,7 @@ async function refreshOnce(rawFromCookie: string): Promise<AuthResult> {
         previousTokenHash: hash,
         previousUsedAt: now,
       },
-    ];
+    ].slice(-MAX_REFRESH_TOKENS);
     doc.set("refreshTokens", nextTokens);
     await doc.save();
     const accessToken = await signAccessToken(doc.id);
@@ -166,7 +190,7 @@ async function refreshOnce(rawFromCookie: string): Promise<AuthResult> {
     const familyIds = new Set(prevMatches.map((t) => t.familyId));
     doc.set(
       "refreshTokens",
-      doc.refreshTokens.filter((t) => !familyIds.has(t.familyId)),
+      activeRefreshTokens(doc.refreshTokens, now).filter((t) => !familyIds.has(t.familyId)),
     );
     await doc.save();
     throw new AppError("UNAUTHORIZED", "Refresh token reuse detected");
@@ -175,13 +199,7 @@ async function refreshOnce(rawFromCookie: string): Promise<AuthResult> {
   const familyId = prevMatches[0]!.familyId;
   const pair = generateRefreshToken();
   const nextTokens = [
-    ...doc.refreshTokens.map((t) => ({
-      tokenHash: t.tokenHash,
-      familyId: t.familyId,
-      expiresAt: t.expiresAt,
-      previousTokenHash: t.previousTokenHash ?? null,
-      previousUsedAt: t.previousUsedAt ?? null,
-    })),
+    ...activeRefreshTokens(doc.refreshTokens, now),
     {
       tokenHash: pair.hash,
       familyId,
@@ -189,7 +207,7 @@ async function refreshOnce(rawFromCookie: string): Promise<AuthResult> {
       previousTokenHash: hash,
       previousUsedAt: now,
     },
-  ];
+  ].slice(-MAX_REFRESH_TOKENS);
   doc.set("refreshTokens", nextTokens);
   await doc.save();
 
@@ -208,7 +226,7 @@ export async function logout(rawFromCookie: string): Promise<void> {
   if (!entry) return;
   doc.set(
     "refreshTokens",
-    doc.refreshTokens.filter((t) => t.familyId !== entry.familyId),
+    activeRefreshTokens(doc.refreshTokens, new Date()).filter((t) => t.familyId !== entry.familyId),
   );
   await doc.save();
 }

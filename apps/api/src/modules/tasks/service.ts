@@ -128,37 +128,42 @@ export async function update(
   input: UpdateTaskInput,
 ): Promise<TaskResponse> {
   if (!isObjectIdOrHexString(taskId)) throw new AppError("NOT_FOUND", "Task not found");
-  const doc = await Task.findOne({ _id: taskId, workspaceId });
-  if (!doc) throw new AppError("NOT_FOUND", "Task not found");
+  const current = await Task.findOne({ _id: taskId, workspaceId });
+  if (!current) throw new AppError("NOT_FOUND", "Task not found");
 
   await assertAssigneeExists(workspaceId, input.assigneeId);
 
-  const prevDesc = doc.description ?? "";
-  const prevSub = (doc.subtasks ?? []).map((s) => ({ title: s.title, done: s.done }));
-  const prevTitle = doc.title;
-  const prevStatus = doc.status;
-
-  const titleChanged = input.title !== undefined && input.title !== prevTitle;
+  const prevDesc = current.description ?? "";
+  const prevSub = (current.subtasks ?? []).map((s) => ({ title: s.title, done: s.done }));
+  const titleChanged = input.title !== undefined && input.title !== current.title;
   const descChanged = input.description !== undefined && input.description !== prevDesc;
   const subChanged =
     input.subtasks !== undefined && JSON.stringify(input.subtasks) !== JSON.stringify(prevSub);
 
-  if (input.title !== undefined) doc.title = input.title;
-  if (input.description !== undefined) doc.description = input.description;
-  if (input.status !== undefined) doc.status = input.status;
-  if (input.priority !== undefined) doc.priority = input.priority;
-  if (input.dueDate !== undefined) doc.dueDate = input.dueDate;
-  if (input.labels !== undefined) doc.set("labels", input.labels);
-  if (input.assigneeId !== undefined) doc.set("assigneeId", input.assigneeId ?? null);
-  if (input.subtasks !== undefined) doc.set("subtasks", input.subtasks);
+  const set: Record<string, unknown> = {};
+  if (input.title !== undefined) set.title = input.title;
+  if (input.description !== undefined) set.description = input.description;
+  if (input.status !== undefined) set.status = input.status;
+  if (input.priority !== undefined) set.priority = input.priority;
+  if (input.dueDate !== undefined) set.dueDate = input.dueDate;
+  if (input.labels !== undefined) set.labels = input.labels;
+  if (input.assigneeId !== undefined) set.assigneeId = input.assigneeId ?? null;
+  if (input.subtasks !== undefined) set.subtasks = input.subtasks;
 
-  if (doc.status === "done" && prevStatus !== "done") doc.completedAt = new Date();
-  else if (doc.status !== "done" && prevStatus === "done") doc.completedAt = null;
+  if (input.status === "done" && current.status !== "done") set.completedAt = new Date();
+  else if (input.status !== undefined && input.status !== "done" && current.status === "done") {
+    set.completedAt = null;
+  }
 
-  doc.version = (doc.version ?? 0) + 1;
-  if (titleChanged || descChanged || subChanged) doc.embeddingStatus = "dirty";
+  if (titleChanged || descChanged || subChanged) set.embeddingStatus = "dirty";
 
-  await doc.save();
+  const doc = await Task.findOneAndUpdate(
+    { _id: taskId, workspaceId },
+    { $set: set, $inc: { version: 1 } },
+    { returnDocument: "after", runValidators: true },
+  );
+  if (!doc) throw new AppError("NOT_FOUND", "Task not found");
+
   return toTaskResponse(doc.toObject() as unknown as TaskRaw);
 }
 

@@ -13,7 +13,7 @@ Last updated 2026-11-27. IDs never change. Severity: H high, M medium, L low. "C
 | D-05 | Auto-workspace on register missing from the contract | M | Closed |
 | D-06 | Projects, Inbox and Calendar in the nav with no Project model | M | Closed (cut) |
 | D-07 | "Restricted tasks" and comments mentioned without a model or meaning | M | Open (decide before 3.6; default workspace-level filter, tasks only) |
-| D-08 | Root `engines` says node >=20 but `cn` needs 22; `package.json` has `\u003e` escapes | L | Open |
+| D-08 | Root `engines` says node >=20 but `cn` needs 22; `package.json` has `\u003e` escapes | L | Closed (Node >=22) |
 | D-09 | Stray `tash list` file and untracked `.vscode` | L | Closed |
 | D-10 | Comment in `shared/errors.ts` cites section 4 (contract is section 5) | L | Open |
 | D-11 | PRs #18 and #19 merged after self-review only; Phase 2 web work, A2, A3 and the rate-limit fix have no independent review yet | M | Open |
@@ -39,22 +39,22 @@ Last updated 2026-11-27. IDs never change. Severity: H high, M medium, L low. "C
 |---|---|---|---|
 | A-01 | Two simultaneous refreshes returned 500 (version conflict) | H | Closed (A3: retry plus test; owner has not reported whether the test failed before the fix) |
 | A-02 | `TRUST_PROXY_HOPS` default 1, docs say 2 behind Vercel and Render | H | Open (verify at first deploy) |
-| A-03 | Register is not atomic | M | Open (H1) |
+| A-03 | Register is not atomic | M | Closed (H1) |
 | A-04 | No indexes on refresh token hashes | M | Closed (A3) |
-| A-05 | `refreshTokens` grows without limit | M | Open (H1) |
-| A-06 | JWT secret can be empty in production; `JWT_REFRESH_SECRET` unused | M | Open (H1) |
-| A-07 | `requireAuth` turns database errors into 401 | M | Open (H1) |
-| A-08 | Task `version` not atomic | M | Open (before 3.11) |
+| A-05 | `refreshTokens` grows without limit | M | Closed (H1; max 10 records) |
+| A-06 | JWT secret can be empty in production; `JWT_REFRESH_SECRET` unused | M | Closed (H1) |
+| A-07 | `requireAuth` turns database errors into 401 | M | Closed (H1) |
+| A-08 | Task `version` not atomic | M | Closed (atomic increment; concurrent PATCH test) |
 | A-09 | Assignee need not be a workspace member | M | Closed (unreviewed, #24) |
 | A-10 | Bad `userId` in `/members/:userId` returned 500 | M | Closed (unreviewed, #24) |
 | A-11 | `Workspace.ownerId` goes stale | L | Open |
 | A-12 | Last-owner check can be raced | L | Open |
 | A-13 | Task list sorts in memory | L | Open |
-| A-14 | Cast errors and oversized JSON return 500 | L | Open (H1) |
-| A-15 | `/health` has no `no-store` | L | Open (H1) |
+| A-14 | Cast errors and oversized JSON return 500 | L | Closed (H1) |
+| A-15 | `/health` has no `no-store` | L | Closed (H1) |
 | A-16 | `jwtVerify` does not pin HS256; login timing leak; argon prefix dispatch not implemented | L | Open |
 | A-17 | `req.valid` typed `unknown`; dead `Task.toJSON`; `getDetail` over-fetches; `console.log` in `connect.ts` | L | Open |
-| A-18 | `.env.example` is incomplete | L | Open (H1) |
+| A-18 | `.env.example` is incomplete | L | Closed (H1) |
 | A-19 | Test gaps: expired refresh token, Secure cookie flag | M | Open (other gaps closed by #24, A2, A3) |
 | A-20 | `workspaces.test.ts` assertion was weakened | M | Closed (unreviewed, #24) |
 | A-21 | `isValidObjectId` accepts any 12-character string | L | Open (the new helper in #24 is strict) |
@@ -68,7 +68,7 @@ Last updated 2026-11-27. IDs never change. Severity: H high, M medium, L low. "C
 
 | ID | Issue | Sev | Status |
 |---|---|---|---|
-| C-01 | CI never builds the web app | M | Open (H2) |
+| C-01 | CI never builds the web app | M | Closed (H2; web build added to CI) |
 | C-02 | MongoDB binary cache never saved | M | Closed |
 | C-03 | No API build, `render.yaml` or `vercel.json` | M | Open (1.13, 4.1) |
 | C-04 | `cn` package | Info | Closed (official shadcn package) |

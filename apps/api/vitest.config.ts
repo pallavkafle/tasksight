@@ -11,7 +11,7 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
       JWT_ACCESS_SECRET: "test-access-secret",
-      JWT_REFRESH_SECRET: "test-refresh-secret",
+
       MONGODB_URI: "mongodb://placeholder-for-env-check",
       RATE_LIMIT_ENABLED: "true",
       AUTH_RATE_LIMIT_MAX: "100",

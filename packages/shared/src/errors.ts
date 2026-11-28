@@ -3,6 +3,7 @@ import { z } from "zod";
 // Error codes used by every API response. Keep in sync with docs/architecture.md section 4.
 export const ERROR_CODES = [
   "VALIDATION_ERROR",
+  "PAYLOAD_TOO_LARGE",
   "UNAUTHORIZED",
   "FORBIDDEN",
   "NOT_FOUND",
@@ -17,6 +18,7 @@ export type ErrorCode = z.infer<typeof errorCodeSchema>;
 // HTTP status for each code (the API uses this; the web app can use it for display logic).
 export const ERROR_STATUS: Record<ErrorCode, number> = {
   VALIDATION_ERROR: 400,
+  PAYLOAD_TOO_LARGE: 413,
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
   NOT_FOUND: 404,

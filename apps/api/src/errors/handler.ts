@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from "express";
+import mongoose from "mongoose";
 import type { ApiError } from "@tasksight/shared";
 import { AppError } from "./AppError";
 
@@ -19,6 +20,10 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     appError = err;
   } else if ((err as { type?: unknown } | null)?.type === "entity.parse.failed") {
     appError = new AppError("VALIDATION_ERROR", "Request body is not valid JSON");
+  } else if ((err as { type?: unknown } | null)?.type === "entity.too.large") {
+    appError = new AppError("PAYLOAD_TOO_LARGE", "Request body is too large");
+  } else if (err instanceof mongoose.Error.CastError) {
+    appError = new AppError("VALIDATION_ERROR", "Invalid identifier");
   } else {
     req.log.error({ err }, "unhandled error");
     appError = new AppError("INTERNAL", "Something went wrong");

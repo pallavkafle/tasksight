@@ -154,12 +154,18 @@ Run the whole product as a new user: register, create a workspace, invite a seco
 
 Found during the Phase 2 review. Order: 3.1 to 3.3, then H1 and H2, then the skeleton deploy (1.13), then the rest of Phase 3. A-08 (atomic task `version`) must be done before 3.11.
 
+**A-08 status:** Done; task PATCH increments `version` atomically, with concurrent-update regression coverage. PR pending.
+
 ### H1 Pre-deploy API hardening (Lane A)
+
+**Status:** Done; implementation and full validation passed, PR pending.
 
 A-03 make register atomic or compensate on failure. A-05 prune and cap `refreshTokens`. A-06 require JWT secrets of 32 or more characters in production and remove the unused `JWT_REFRESH_SECRET`. A-07 `requireAuth` returns 401 only for token errors. A-14 map cast errors to 400 and oversized bodies to 413. A-15 `no-store` on `/health`. A-18 complete `.env.example`. Set Node 22 in `engines`.
 **Done when:** each item has a test, `pnpm test` passes, and `.env.example` lists every variable.
 
 ### H2 CI and repository settings (Lane A + owner)
+
+**Status:** Web build and local typecheck probe validated; CI red-run proof and branch protection pending.
 
 Add `pnpm --filter @tasksight/web build` to CI. Prove a deliberate type error fails CI (C-05). Turn on branch protection for `main` (PR required, CI required) so a direct push like `6565690` is blocked (C-06).
 **Done when:** CI builds the web app, a throwaway branch with a type error is red, and a direct push to `main` is rejected.
