@@ -107,6 +107,7 @@ Paths are the API's own. The browser uses the same paths behind `/api`.
 | `DELETE /workspaces/:workspaceId/tasks/:taskId` | Bearer, member+ | 204 | 401, 403, 404 |
 | `GET /workspaces/:workspaceId/tasks/stats` | Bearer, viewer+; query: `tz` (IANA name, default `UTC`) | 200 `{counts:{todo,in_progress,done}, total, completedByDay:[{date,count}] x7, completedLast7Days}` | 400, 401, 403, 404 |
 | `POST /ai/parse-task` | `{text (1 to 500 chars), tz? (IANA zone, default UTC), workspaceId?}` + Bearer | 200 `{task:{title,priority,dueDate (ISO at 12:00 UTC or null),labels[]}, fromSample}` | 400, 401, 403, 429, 500 |
+| `GET /ai/usage` | Bearer; query: `days` (1-30, default 7) | 200 `{days, byFeature, total, quota:{limit,usedToday}}`; each metric has calls, failures, cacheHits, samples, tokensIn, tokensOut, estCost and p95LatencyMs. p95 uses nearest-rank over real model attempts, excluding cache/sample and quota/limiter/unavailable fallbacks | 400, 401, 429 |
 
 - **Task stats:** `GET /workspaces/:workspaceId/tasks/stats?tz=Area/City` returns counts by status, the total, and the number of tasks completed on each of the last 7 calendar days in the given time zone (zero-filled, oldest first), plus their sum. The route is registered before `/tasks/:taskId`. An invalid `tz` returns 400.
 - **Error shape:** `{ error: { code, message, details? } }`, with `details` as `Array<{ path: string, message: string }>` or omitted.

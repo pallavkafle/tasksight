@@ -180,8 +180,11 @@ All Phase 3 tasks are **Not started** unless a status line says otherwise.
 **Done when:** unit tests cover the limiter, retries, cache hits and the fallback, and no code outside `llm/` calls the provider SDK.
 
 ### 3.2 Usage endpoint (Lane A)
-`AiLog` aggregation: calls, tokens, estimated cost and p95 latency per feature.
-**Done when:** the endpoint returns correct numbers for seeded log rows.
+
+**Status:** Done.
+
+`GET /ai/usage?days=7` aggregates the authenticated caller's `AiLog` rows for 1 to 30 days. It returns per-feature and total call, failure, cache-hit, sample, token, estimated-cost, and p95 latency metrics, plus daily quota usage.
+**Done when:** the endpoint returns correct numbers for seeded log rows, isolates users, and validates the requested day range.
 
 ### 3.3 Quick-add API (Lane A)
 
