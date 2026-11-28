@@ -92,7 +92,7 @@ Run the whole auth flow in the browser and check the cookie in dev tools (`HttpO
 
 ### 1.13 Skeleton deploy (Lane A + B)
 
-**Status:** **Open. Not started.** No `render.yaml`, `vercel.json`, API build script or tsup config exists yet. Do it right after H1 and H2 (see Phase 2.5). A minimal version of 4.1 is needed first.
+**Status:** **In progress.** The API bundle and Render/Vercel configs are implemented and the full local validation passes. The live services, production environment variables and auth smoke tests are still pending.
 
 Deploy the API to Render and the web app to Vercel. Build config comes from task 4.1; use a minimal version now if needed. Set `API_ORIGIN`, `CORS_ORIGIN`, `TRUST_PROXY_HOPS` and the auth secrets. Allow `0.0.0.0/0` in Atlas network access with a strong DB password.
 **Done when:** register, login, refresh and logout work on the live URLs.
@@ -154,21 +154,21 @@ Run the whole product as a new user: register, create a workspace, invite a seco
 
 Found during the Phase 2 review. Order: 3.1 to 3.3, then H1 and H2, then the skeleton deploy (1.13), then the rest of Phase 3. A-08 (atomic task `version`) must be done before 3.11.
 
-**A-08 status:** Done; task PATCH increments `version` atomically, with concurrent-update regression coverage. PR pending.
+**A-08 status:** Done and merged; task PATCH increments `version` atomically, with concurrent-update regression coverage.
 
 ### H1 Pre-deploy API hardening (Lane A)
 
-**Status:** Done; implementation and full validation passed, PR pending.
+**Status:** Done and merged; implementation and full validation passed.
 
 A-03 make register atomic or compensate on failure. A-05 prune and cap `refreshTokens`. A-06 require JWT secrets of 32 or more characters in production and remove the unused `JWT_REFRESH_SECRET`. A-07 `requireAuth` returns 401 only for token errors. A-14 map cast errors to 400 and oversized bodies to 413. A-15 `no-store` on `/health`. A-18 complete `.env.example`. Set Node 22 in `engines`.
 **Done when:** each item has a test, `pnpm test` passes, and `.env.example` lists every variable.
 
 ### H2 CI and repository settings (Lane A + owner)
 
-**Status:** Web build and local typecheck probe validated; CI red-run proof and branch protection pending.
+**Status:** Web build is in CI. C-05 is proven by PR #48, where an intentional TS2322 failed the CI typecheck. The owner reports C-06 settings enabled; confirm the saved branch rule before closing it.
 
 Add `pnpm --filter @tasksight/web build` to CI. Prove a deliberate type error fails CI (C-05). Turn on branch protection for `main` (PR required, CI required) so a direct push like `6565690` is blocked (C-06).
-**Done when:** CI builds the web app, a throwaway branch with a type error is red, and a direct push to `main` is rejected.
+**Done when:** CI builds the web app, a deliberate type error is red, and the saved rule requires a PR and the CI check before merging.
 
 ### H3 Web leftovers (Lane B)
 
@@ -246,13 +246,17 @@ Usage view with calls, tokens, estimated cost and p95 latency per feature.
 
 ## Phase 4 - Deployment, Polish & Portfolio
 
-All Phase 4 tasks are **Not started**.
+Deployment skeleton work has started. Task 4.1 is in progress; live deployment and verification remain pending.
 
 ### 4.1 Production API build (Lane A)
-`apps/api/tsup.config.ts` with `noExternal: ["@tasksight/shared"]`, scripts `build: "tsup"` and `start: "node dist/index.js"`, Render build command `pnpm install --prod=false && pnpm --filter @tasksight/api build`, and a `.env.example` listing every variable.
+**Status:** The API bundle and Render/Vercel manifests are implemented; the full local validation passes. A production-environment startup and live `/health` check remain.
+
+`apps/api/tsup.config.ts` bundles `@tasksight/shared`; scripts are `build: "tsup"` and `start: "node dist/server.js"`. `render.yaml` defines the frozen-lockfile install, API build/start commands and `/health` check. `.env.example` lists the API environment variables.
 **Done when:** the production build runs locally with production env values and `/health` responds.
 
 ### 4.2 Production deploy and proxy verification (Lane A + B)
+**Status:** Pending deployment; API logs include `requestIp` and `xForwardedFor` for proxy-hop verification.
+
 Redeploy both apps with the full feature set. Set all env vars (including the LLM keys and model IDs). Verify `req.ip` and `x-forwarded-for` behind Vercel and Render and set `TRUST_PROXY_HOPS` to match.
 **Done when:** two different clients get separate rate-limit buckets, and register, login, refresh, logout and a page reload all work on the live URLs.
 

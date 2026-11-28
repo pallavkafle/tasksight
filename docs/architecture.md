@@ -201,18 +201,19 @@ Live runs use free-tier quota and vary between runs, so PRs replay recorded resp
 - mongodb-memory-server cannot run `$vectorSearch`. Vector queries sit behind a repository interface; CI uses a fake, and real retrieval is tested locally against the dev Atlas cluster or `mongodb-atlas-local` (indexing lags by several seconds after seeding).
 
 ## 12. Deployment
-- **API (Render free tier):** 512 MB RAM, 0.1 CPU, sleeps after 15 minutes idle, about a minute to wake, 750 free hours per month. Build `pnpm install --prod=false && pnpm --filter @tasksight/api build`; start `node dist/index.js`. Env: `NODE_ENV`, `PORT`, `APP_VERSION`, `CORS_ORIGIN`, `TRUST_PROXY_HOPS`, `MONGODB_URI`, `JWT_ACCESS_SECRET` (at least 32 characters in production), `REFRESH_TOKEN_TTL_DAYS`, `REFRESH_GRACE_SECONDS`, rate-limit values (including `AI_RATE_LIMIT_MAX` and `AI_RATE_LIMIT_WINDOW_MS` for `/ai/*`), the LLM key, model IDs, limits and user quota (full list in `apps/api/.env.example`).
-- **Web (Vercel):** `API_ORIGIN` env var for the rewrite, and a correctly spelled `vercel.json`.
+- **API (Render):** `render.yaml` defines the service, frozen-lockfile install, API build/start commands and `/health` health check. The start script runs `node dist/server.js`. Enter `MONGODB_URI` and `CORS_ORIGIN` privately in Render; the manifest generates `JWT_ACCESS_SECRET` (at least 32 characters in production). Other settings use the defaults in `apps/api/src/config/env.ts`; set the Gemini key and model values there when enabling live AI calls.
+- **Web (Vercel):** `apps/web/vercel.json` identifies the Next.js app. Set `API_ORIGIN` to the Render service origin for the existing rewrite. Set Render's `CORS_ORIGIN` to the Vercel site origin.
+- **Proxy:** `render.yaml` initially sets `TRUST_PROXY_HOPS=1`. Inspect the API's `requestIp` and `xForwardedFor` log fields behind the deployed proxy chain, then set the hop count based on observed requests (A-02); do not assume it is 2.
 - **Atlas:** allow `0.0.0.0/0` only at deploy time, with a strong password. An idle M0 cluster can pause, so confirm it is active before a demo.
 
-## 13. Implementation notes and deviations (2026-11-27)
+## 13. Implementation notes and deviations (2026-11-28)
 
 - The dashboard chart uses recharts (the plan was hand-written SVG; accepted). Sparklines are hand-written SVG.
 - The web client keeps the workspace choice in `localStorage` (`tasksight.workspaceId`), always inside try/catch.
 - Every task query key starts with `["tasks", workspaceId]`, so one invalidation refreshes the board and the dashboard.
 - The board loads pages of 100 up to 300 tasks, then shows a notice.
 - `ApiError.code` can be `NETWORK` (web only, not one of the shared error codes).
-- Not built yet (the sections above describe the target): the tsup production build, Render and Vercel config, `x-origin-secret`, `/ai/*` routes, the `llm/` module, `RagChunk`, `AiLog`, `AgentProposal`.
+- The tsup production build and Render/Vercel configs are implemented and locally validated; a live deployment and `x-origin-secret` remain pending. Other unfinished items include `/ai/*` routes, the `llm/` module, `RagChunk`, `AiLog` and `AgentProposal`.
 - Password verification does not yet dispatch on the hash prefix.
 - Known gaps are tracked in `docs/issues.md`; ideas that are not built are in `docs/improvements.md`.
 - LLM module (`apps/api/src/llm`, task 3.1): every model call goes through `getLlm()`. Order: response cache, per-user daily quota (real calls counted from `AiLog` since midnight US Pacific), per-model limiter (per-minute bucket and a daily count), main model then fallback model, then a saved sample answer. A sample is returned with `fromSample: true` instead of an error. It does not stream yet. Prices are in `llm/pricing.ts`; a model without a price gives `estCost: null`.
