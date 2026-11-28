@@ -36,7 +36,7 @@ Rule: never use a text colour as a background. `--muted` used to hold the text c
 | Desktop sidebar | Brand, workspace switcher, nav (Dashboard, Board, Members), user and logout |
 | Mobile | Header with switcher, theme toggle and logout; bottom nav with the same three items |
 | Header | Theme toggle (desktop) |
-| Not built | Ask Sathi (`/chat`) is hidden until built. Projects, Inbox, Calendar and Insights were cut (no Project model) |
+| Not built | Insight (`/chat`) is hidden until built. Projects, Inbox, Calendar and Insights were cut (no Project model) |
 
 ## 3b. Screens (built)
 
@@ -44,7 +44,7 @@ Rule: never use a text colour as a background. `--muted` used to hold the text c
 2. **Board** (`/board`): Kanban columns by status, drag and drop, filters (priority, assignee, label), cards with priority, due date, label chips, subtask bar and assignee initials, "New Task" for owners and members.
 3. **Members** (`/members`): create a workspace, invite with a role, change role, remove, leave, last-owner guard.
 4. **Login and Register**: react-hook-form with the shared Zod schemas.
-5. **Ask Sathi**: not built (Phase 3).
+5. **Insight**: not built (Phase 3).
 
 ## 4. Components
 
@@ -68,4 +68,4 @@ Installable only: web manifest and icons (task 4.5, not built). No offline cachi
 
 ## 7. Branding
 
-Name: TaskSight. Tagline (README, PRD, page metadata): "clarity into what matters". In-app line on the login and register screens: "your AI task companion". The README explains the name: Sathi (साथी) means companion in Nepali, and the Ask Sathi page keeps that name.
+Name: TaskSight. Tagline (README, PRD, page metadata): "clarity into what matters". In-app line on the login and register screens: "your AI task companion". The in-app assistant is called Insight.

@@ -26,7 +26,7 @@ It replaces my deployed MERN expense tracker (`Expense-Tracker`), which was a tu
 | # | Feature | Behavior |
 |---|---|---|
 | 1 | Natural-language quick-add | A command bar turns "submit report Friday, high priority" into a validated task shown as a confirm chip. One retry on invalid model output. On rate limit or parse failure it opens a pre-filled manual form instead of blocking |
-| 2 | Ask Sathi (RAG) | Answers questions from the user's workspace and cites task IDs. Every cited ID is validated. Workspace and role filters apply inside the vector search |
+| 2 | Insight (RAG) | Answers questions from the user's workspace and cites task IDs. Every cited ID is validated. Workspace and role filters apply inside the vector search |
 | 3 | Evals and cost dashboard | Two-tier evals (replay on every PR, live runs on demand). Every AI call logs feature, model, tokens, latency, cost and success. The dashboard shows p95 latency and cost per query |
 | 4 | Kanban, workspaces, RBAC | Workspaces with 3 roles (owner, member, viewer). Kanban with touch-safe drag and drop, filters, cursor pagination. The last owner cannot demote themselves or leave |
 | 5 | AI subtask breakdown | A task becomes a validated list of embedded checklist items (max 30) |
@@ -54,7 +54,7 @@ Web app, installable as a PWA (manifest only in v1, no offline caching). One cod
 | 1 | Auth, tests, CI, same-origin proxy, skeleton deploy | Live login on Vercel and Render |
 | 2 | Workspaces, 3-role RBAC, task CRUD, Kanban, embedded subtasks, nav shell, theme | A teammate can use it without help |
 | 3 | LLM layer, command bar, quick-add, usage logging, streaming spike | The quick-add example creates the correct task |
-| 4 | Embeddings, vector search, Ask Sathi with citations, subtasks, replay evals | Evals replay in CI and retrieval respects workspace filters |
+| 4 | Embeddings, vector search, Insight with citations, subtasks, replay evals | Evals replay in CI and retrieval respects workspace filters |
 | 5 | Approval agent, live eval recordings, README, ADR, demo video | I can walk an interviewer through the whole app |
 
 **Status on 2026-11-27:** Week 1 is done except the skeleton deploy (task 1.13). Week 2 is done (workspaces, RBAC, tasks, Kanban, subtasks, shell, theme, dashboard, members page). Weeks 3 to 5 have not started. Before the deploy there is a short hardening step (tasks H1 to H3 in `docs/task.md`).
@@ -64,7 +64,7 @@ Web app, installable as a PWA (manifest only in v1, no offline caching). One cod
 ## 9. Portfolio deliverables
 - README with a one-line description, live demo link, screenshots or GIF, architecture diagram, eval results table, p95 latency and cost-per-query numbers, tech decisions, "what I'd do next", and a link to the old expense tracker.
 - An ADR section: why 768-dimension embeddings, why same-origin API rewrites, why workspace filtering in MongoDB instead of row-level security.
-- A 2-minute video: command bar, a task created, Ask Sathi with citations, the eval table.
+- A 2-minute video: command bar, a task created, Insight with citations, the eval table.
 
 ## 10. Risks
 

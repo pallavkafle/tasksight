@@ -26,7 +26,7 @@ Last updated 2026-11-27. IDs never change. Severity: H high, M medium, L low. "C
 | D-18 | recharts added against the hand-written SVG plan | L | Closed (accepted) |
 | D-19 | Docs not updated since #19 | M | Closed |
 | D-20 | Task 2.5 incomplete | M | Closed |
-| D-21 | Lane summaries disagreed with git | L | Info: verify claims with git |
+| D-21 | PR descriptions disagreed with the code | L | Info: verify claims with git |
 | D-22 | `--chart-*` and `--sidebar-*` tokens removed silently | L | Open |
 | D-23 | Network errors must not log the user out | M | Closed |
 | D-24 | Contract extensions missing from `architecture.md` | M | Closed |
@@ -118,3 +118,14 @@ Last updated 2026-11-27. IDs never change. Severity: H high, M medium, L low. "C
 | P-03 | Free-tier limits are tight and can change | M | Open (3.1) |
 | P-04 | SSE through the Vercel rewrite is unproven | M | Open (3.5) |
 | P-05 | Cost estimate needs a price table in env | L | Open (3.1) |
+
+## Phase 3 notes (added 2026-11-28)
+
+| ID | Issue | Sev | Status |
+|---|---|---|---|
+| D-27 | A planned 3.1 branch was never saved, so 3.1 was rebuilt from `main` | L | Closed |
+| D-28 | The command bar, the Insight chat and the agent diff view were built (#36 to #41) before their API tasks (3.7, 3.11) existed, so parts rest on mocked data. Check each against the real endpoint when its API task is done | M | Open |
+| D-29 | "Insight" is now "Insight" in the app (#40); docs renamed | L | Closed |
+| D-30 | `llm/pricing.ts` is empty, so every cost estimate is null | L | Open (copy prices from the official Google price page) |
+| A-27 | The web command bar does not send `workspaceId` to `/ai/parse-task`, so `AiLog.workspaceId` is null for those calls | L | Open |
+| A-28 | Fallback model limits (5 per minute, 20 per day) are my estimate; only the main text and embedding limits were read from AI Studio | L | Open |
